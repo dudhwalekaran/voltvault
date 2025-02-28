@@ -1,0 +1,220 @@
+'use client';
+
+import { FaCloudUploadAlt } from "react-icons/fa";
+import Link from "next/link";
+import { useState } from "react";
+
+export default function BusCreate() {
+  // States for each image input box
+  const [pssImage, setPssImage] = useState(null);
+  const [avrImage, setAvrImage] = useState(null);
+  const [oelImage, setOelImage] = useState(null);
+  const [uelImage, setUelImage] = useState(null);
+
+  // Handle image selection for Power System Stabilizer (PSS)
+  const handlePssImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPssImage(URL.createObjectURL(file));
+    }
+  };
+
+  // Handle image selection for AVR
+  const handleAvrImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setAvrImage(URL.createObjectURL(file));
+    }
+  };
+
+  // Handle image selection for OEL
+  const handleOelImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setOelImage(URL.createObjectURL(file));
+    }
+  };
+
+  // Handle image selection for UEL
+  const handleUelImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setUelImage(URL.createObjectURL(file));
+    }
+  };
+
+  return (
+    <div className="m-2 font-bold text-3xl">
+      {/* Title */}
+      <div className="mb-6">Create Excitation System</div>
+
+      {/* Input Fields */}
+      <div className="grid grid-cols-2 gap-6 mb-6">
+        {/* First row */}
+        <div>
+          <label className="block text-sm font-medium mb-2">Location</label>
+          <input
+            type="text"
+            placeholder="Select Location..."
+            className="w-full h-[40px] pl-3 pr-4 bg-[#Fff] border border-gray-300 rounded-md placeholder:font-normal text-sm placeholder-[#000000]"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2">
+            Automatic Voltage Regulator(AVR) Type
+          </label>
+          <input
+            type="text"
+            placeholder="Select a value..."
+            className="w-full h-[40px] pl-3 pr-4 bg-[#fff] border border-gray-300 rounded-md placeholder:font-normal text-sm placeholder-[#000000]"
+          />
+        </div>
+
+        {/* Second row */}
+        <div>
+          <label className="block text-sm font-medium mb-2">Generator Device Name</label>
+          <input
+            type="text"
+            placeholder="Select device..."
+            className="w-full h-[40px] pl-3 pr-4 bg-[#fff] border border-gray-300 rounded-md placeholder:font-normal text-sm placeholder-[#000000]"
+          />
+        </div>
+      </div>
+
+      {/* Image Selectors */}
+      <div className="grid grid-cols-2 gap-6 mb-6">
+        {/* Image Selector 1 */}
+        <div className="flex flex-col justify-center items-start translate-y-[16.5rem]">
+          <label className="block text-sm font-medium mb-2">Power System Stabilizer(PSS) Image</label>
+          <div className="relative w-full h-[300px] bg-[#F5F5F5] border-2 border-dashed border-[#9CA3AF] rounded-lg flex justify-center items-center cursor-pointer space-y-6">
+            <input
+              type="file"
+              accept="image/*"
+              className="absolute inset-0 opacity-0 cursor-pointer"
+              onChange={handlePssImageChange}
+            />
+            <FaCloudUploadAlt className="text-6xl text-[#AFAFAF] -translate-y-14" />
+            <span className="flex flex-col absolute bottom-16 text-sm font-normal text-[#757575] -translate-y-14">
+              Upload Picture Here from your device <br />
+              <span className="text-xs font-semibold">
+                .jpg or .jpeg or .png
+              </span>
+            </span>
+            <button className="absolute bottom-4 h-10 w-60 px-5 text-base text-white bg-[#2563EB] font-normal rounded-3xl cursor-pointer -translate-y-10">
+              Select from Computer
+            </button>
+            {pssImage && (
+              <img
+                src={pssImage}
+                alt="Selected Image"
+                className="absolute inset-0 w-full h-full object-cover rounded-lg"
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Image Selector 2 */}
+        <div className="flex flex-col justify-center items-start -translate-y-24">
+          <label className="block text-sm font-medium mb-2">AVR Image</label>
+          <div className="relative w-full h-[300px] bg-[#F5F5F5] border-2 border-dashed border-[#9CA3AF] rounded-lg flex justify-center items-center cursor-pointer space-y-6">
+            <input
+              type="file"
+              accept="image/*"
+              className="absolute inset-0 opacity-0 cursor-pointer"
+              onChange={handleAvrImageChange}
+            />
+            <FaCloudUploadAlt className="text-6xl text-[#AFAFAF] -translate-y-14" />
+            <span className="flex flex-col absolute bottom-16 text-sm font-normal text-[#757575] -translate-y-14">
+              Upload Picture Here from your device <br />
+              <span className="text-xs font-semibold">
+                .jpg or .jpeg or .png
+              </span>
+            </span>
+            <button className="absolute bottom-4 h-10 w-60 px-5 text-base text-white bg-[#2563EB] font-normal rounded-3xl cursor-pointer -translate-y-10">
+              Select from Computer
+            </button>
+            {avrImage && (
+              <img
+                src={avrImage}
+                alt="Selected Image"
+                className="absolute inset-0 w-full h-full object-cover rounded-lg"
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Image Selector 3 */}
+        <div className="flex flex-col justify-center items-start translate-y-[16.5rem]">
+          <label className="block text-sm font-medium mb-2">Over Excitation Limiter(OEL) Image</label>
+          <div className="relative w-full h-[300px] bg-[#F5F5F5] border-2 border-dashed border-[#9CA3AF] rounded-lg flex justify-center items-center cursor-pointer space-y-6">
+            <input
+              type="file"
+              accept="image/*"
+              className="absolute inset-0 opacity-0 cursor-pointer"
+              onChange={handleOelImageChange}
+            />
+            <FaCloudUploadAlt className="text-6xl text-[#AFAFAF] -translate-y-14" />
+            <span className="flex flex-col absolute bottom-16 text-sm font-normal text-[#757575] -translate-y-14">
+              Upload Picture Here from your device <br />
+              <span className="text-xs font-semibold">
+                .jpg or .jpeg or .png
+              </span>
+            </span>
+            <button className="absolute bottom-4 h-10 w-60 px-5 text-base text-white bg-[#2563EB] font-normal rounded-3xl cursor-pointer -translate-y-10">
+              Select from Computer
+            </button>
+            {oelImage && (
+              <img
+                src={oelImage}
+                alt="Selected Image"
+                className="absolute inset-0 w-full h-full object-cover rounded-lg"
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Image Selector 4 */}
+        <div className="flex flex-col justify-center items-start -translate-y-24">
+          <label className="block text-sm font-medium mb-2">Under Excitation Limiter(UEL) Image</label>
+          <div className="relative w-full h-[300px] bg-[#F5F5F5] border-2 border-dashed border-[#9CA3AF] rounded-lg flex justify-center items-center cursor-pointer space-y-6">
+            <input
+              type="file"
+              accept="image/*"
+              className="absolute inset-0 opacity-0 cursor-pointer"
+              onChange={handleUelImageChange}
+            />
+            <FaCloudUploadAlt className="text-6xl text-[#AFAFAF] -translate-y-14" />
+            <span className="flex flex-col absolute bottom-16 text-sm font-normal text-[#757575] -translate-y-14">
+              Upload Picture Here from your device <br />
+              <span className="text-xs font-semibold">
+                .jpg or .jpeg or .png
+              </span>
+            </span>
+            <button className="absolute bottom-4 h-10 w-60 px-5 text-base text-white bg-[#2563EB] font-normal rounded-3xl cursor-pointer -translate-y-10">
+              Select from Computer
+            </button>
+            {uelImage && (
+              <img
+                src={uelImage}
+                alt="Selected Image"
+                className="absolute inset-0 w-full h-full object-cover rounded-lg"
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Buttons */}
+      <div className="flex space-x-4 translate-y-[16.5rem]">
+        <button className="bg-blue-800 w-48 text-white py-2 px-6 font-normal text-base rounded-lg hover:bg-blue-800">
+          Submit
+        </button>
+        <Link href="/excitation-system">
+          <button className="bg-red-600 w-48 text-white py-2 px-6 font-normal text-base rounded-lg hover:bg-red-600">
+            Cancel
+          </button>
+        </Link>
+      </div>
+    </div>
+  );
+}

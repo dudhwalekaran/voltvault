@@ -1,0 +1,85 @@
+import React from 'react';
+import Link from 'next/link';
+
+export default function CustomForm() {
+  // Define form fields with unique labels and placeholders
+  const formFields = [
+    { label: 'Location', placeholder: 'Enter Locations...' },
+    { 
+      label: 'Circuit Breaker Status', 
+      type: 'switch' // Custom type to handle the on/off switch
+    },
+    { label: 'Bus (To)', placeholder: 'Other' },
+    { label: 'Bus Section (To)', placeholder: 'Bus Section (To)' },
+    { label: 'Type', placeholder: 'Enter a Value Gas, Hydro or Steam' },
+    { label: 'Rotor', placeholder: 'Enter a Value Round rotor or Salient rotor' },
+    { label: 'MW', placeholder: 'MW' },
+    { label: 'MVA', placeholder: 'MVA' },
+    { label: 'Kv', placeholder: 'Kv' },
+    { label: 'Synchronous Reactance (pu): Xd', placeholder: 'Synchronous Reactance (pu): Xd' },
+    { label: 'Synchronous Reactance (pu): Xq', placeholder: 'Synchronous Reactance (pu): Xq' },
+    { label: 'Transient Reactance (pu): Xd', placeholder: 'Transient Reactance (pu): Xd' },
+    { label: 'Transient Reactance (pu): Xq', placeholder: 'Transient Reactance (pu): Xq' },
+    { label: 'Subtransient Reactance (pu): Xd', placeholder: 'Subtransient Reactance (pu): Xd' },
+    { label: 'Subtransient Reactance (pu): Xq', placeholder: 'Subtransient Reactance (pu): Xq' },
+    { label: 'Transient OC Time Constant (seconds): Td0', placeholder: 'Transient OC Time Constant (seconds): Td0' },
+    { label: 'Transient OC Time Constant (seconds): Tq0', placeholder: 'Transient OC Time Constant (seconds): Tq0' },
+    { label: 'Subtransient OC Time Constant (seconds): Td0', placeholder: 'Subtransient OC Time Constant (seconds): Td0' },
+    { label: 'Subtransient OC Time Constant (seconds): Tq0', placeholder: 'Subtransient OC Time Constant (seconds): Tq0' },
+    { label: 'Stator Leakage Inductance (pu): Xl', placeholder: 'Stator Leakage Inductance (pu): Xl' },
+    { label: 'Stator resistance (pu): Ra', placeholder: 'Stator resistance (pu): Ra' },
+    { label: 'Inertia (MJ/MVA): H', placeholder: 'Inertia (MJ/MVA): H' },
+    { label: 'Poles', placeholder: 'Poles' },
+    { label: 'Speed', placeholder: 'Speed' },
+    { label: 'Frequency', placeholder: 'Frequency' },
+  ];
+
+
+  return (
+    <div className="m-3">
+      <h2 className="text-2xl font-bold mb-6">Create New Generator</h2>
+      <div className="grid grid-cols-2 gap-6">
+        {formFields.map((field, index) => (
+          <div key={index}>
+            {field.type === 'switch' ? (
+              <div className="flex flex-col items-start space-y-2">
+                <label className="block text-sm font-medium mb-2">{field.label}</label>
+                <div className="relative inline-block w-12 h-6 align-middle select-none">
+                  <input
+                    type="checkbox"
+                    id={`switch-${index}`}
+                    className="absolute block w-6 h-6 bg-white border-2 rounded-full appearance-none cursor-pointer peer"
+                  />
+                  <label
+                    htmlFor={`switch-${index}`}
+                    className="block h-6 overflow-hidden bg-gray-300 rounded-full cursor-pointer peer-checked:bg-blue-500 peer-checked:after:translate-x-6 peer-checked:after:bg-white after:content-[''] after:absolute after:top-0 after:left-0 after:w-6 after:h-6 after:bg-gray-100 after:border-2 after:rounded-full after:transition-all"
+                  ></label>
+                </div>
+              </div>
+            ) : (
+              <>
+                <label className="block text-sm font-medium mb-2">{field.label}</label>
+                <input
+                  type="text"
+                  placeholder={field.placeholder}
+                  className="w-full h-[40px] pl-3 pr-4 bg-[#fff] border border-gray-300 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="flex space-x-4 translate-y-10">
+        <button className="bg-blue-800 w-48 text-white py-2 px-6 font-normal text-base rounded-lg hover:bg-blue-800">
+          Submit
+        </button>
+        <Link href="/generator">
+          <button className="bg-red-600 w-48 text-white py-2 px-6 font-normal text-base rounded-lg hover:bg-red-600">
+            Cancel
+          </button>
+        </Link>
+      </div>
+    </div>
+  );
+};

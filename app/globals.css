@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Reset margin, padding, and box-sizing */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Optional: For background image (you can handle this in Tailwind via classes, but this works if you want a custom class) */
+.landing {
+  background-image: url('/light-bulb.jpg');
+  background-size: cover;
+  background-position: center;
+}
+
+/* Optional: For specific shadow and overlay styles */
+.login-overlay {
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+}
+
+.forgot {
+  text-decoration: underline;
+  cursor: pointer;
+}
