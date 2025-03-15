@@ -31,22 +31,22 @@ export default function ForgotPass() {
           </div>
           <nav className="flex space-x-8">
             <h6 className="text-white text-base font-bold cursor-pointer">
-              <a
+              <Link
                 href="https://drive.google.com/file/d/1pEiNQ9-XFeCBnL-c7BAYGX6i3oIgrqMJ/view"
                 target="_blank"
                 rel="noopener noreferrer relative z-10"
               >
                 User's Manual
-              </a>
+              </Link>
             </h6>
             <h6 className="text-white text-base font-bold hover:underline cursor-pointer">
-              <a
+              <Link
                 href="https://voltvault-docs.vercel.app/"
                 target="_blank"
                 rel="noopener noreferrer relative z-10"
               >
                 Developer's Documentation
-              </a>
+              </Link>
             </h6>
           </nav>
         </div>
@@ -62,7 +62,7 @@ export default function ForgotPass() {
         </div>
 
         {/* Login Overlay */}
-        <div className="login-overlay absolute right-10 top-40 w-[26%] h-[45%] bg-[#646B77] bg-opacity-90 rounded-lg p-6 shadow-xl z-10">
+        <div className="login-overlay absolute right-10 top-40 w-[26%] h-[45%] bg-[#646B77] bg-opacity-85 rounded-lg p-6 shadow-xl z-10">
           <div className="login-form text-white space-y-2">
             <h3 className="text-lg font-semibold">Login to your Account</h3>
             <p className="text-sm">
@@ -89,7 +89,7 @@ export default function ForgotPass() {
               </button>
 
               <button className="request w-1/2 h-11 bg-yellow-500 hover:bg-yellow-600 p-3 rounded-md text-white">
-                <Link href="/landing-page">Back to login</Link>
+                <Link href="/">Back to login</Link>
               </button>
             </div>
           </div>

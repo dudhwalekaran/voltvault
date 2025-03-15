@@ -2,17 +2,16 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { jwtDecode } from "jwt-decode"; // Corrected import syntax
 
 export default function Landing() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
-    setSuccess("");
 
     try {
       const response = await fetch("/api/login", {
@@ -24,21 +23,30 @@ export default function Landing() {
       const data = await response.json();
 
       if (response.ok) {
-        setSuccess("Login successful! Welcome, " + data.user.name);
+        // Store the JWT in localStorage
+        localStorage.setItem("authToken", data.token);
 
-        // Redirect to '/dashboard' after login
-        return new Response(null, {
-          status: 302,
-          headers: new Headers({
-            'Location': '/dashboard' // Redirect to '/dashboard'
-          }),
-        });
+        // Decode the token to get the role and user details
+        const decodedToken = jwtDecode(data.token);
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            email: decodedToken.email,
+            name: decodedToken.name,
+            status: decodedToken.status, // Store the role (adminStatus)
+          })
+        );
 
+        alert(`Login successful! Welcome, ${decodedToken.name}`);
+        window.location.href = "/bus"; // Redirect to bus page
       } else {
         setError(data.message);
+        alert(data.message); // Show error to user
       }
     } catch (err) {
       setError("An error occurred. Please try again later.");
+      alert("An error occurred. Please try again later.");
+      console.error("Login error:", err);
     }
   };
 
@@ -47,7 +55,7 @@ export default function Landing() {
       {/* Landing Section with background image */}
       <div className="landing relative bg-cover bg-center">
         {/* Background Overlay */}
-        <div className="absolute inset-0 bg-[#434867CC] opacity-80"></div>
+        <div className="absolute inset-0 bg-[#434867CC] opacity-85"></div>
 
         {/* Navbar - fixed on top */}
         <div className="flex items-center justify-between p-4 absolute top-0 left-0 right-0">
@@ -90,50 +98,22 @@ export default function Landing() {
         {/* Login Overlay */}
         <div className="login-overlay absolute right-10 top-32 w-[26%] h-[65%] bg-[#646B77] bg-opacity-90 rounded-lg p-6 shadow-xl z-10">
           <div className="login-form text-white space-y-5">
-            {" "} {/* Increased space-y */}
             <h3 className="text-lg font-semibold">Login to your Account</h3>
             <p className="text-sm">
               Enter your Email and Password below to login to your account
             </p>
             {/* Login Form */}
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault(); // Prevent form default behavior
-                const email = e.target.email.value; // Retrieve email from form
-                const password = e.target.password.value; // Retrieve password from form
-
-                try {
-                  const response = await fetch("/api/login", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email, password }),
-                  });
-
-                  const data = await response.json();
-
-                  if (response.ok) {
-                    alert(`Login successful! Welcome, ${data.user.name}`);
-                    // You can redirect the user or perform other actions here
-                    window.location.href = '/bus';
-
-                  } else {
-                    alert(data.message); // Display the error message
-                  }
-                } catch (error) {
-                  console.error("Error during login:", error);
-                  alert("An error occurred. Please try again later.");
-                }
-              }}
-              className="space-y-2" // Added spacing between input fields and sections
-            >
+            <form onSubmit={handleLogin} className="space-y-2">
               <div className="space-y-2">
                 <label htmlFor="email" className="block">
                   Email
                 </label>
                 <input
                   id="email"
-                  name="email" // Added name attribute for form submission
+                  name="email"
                   type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="abc@xyz.com"
                   className="w-[280px] p-2 rounded-md bg-white text-black"
                   required
@@ -146,8 +126,10 @@ export default function Landing() {
                 </label>
                 <input
                   id="password"
-                  name="password" // Added name attribute for form submission
+                  name="password"
                   type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="password"
                   className="w-[280px] p-2 px-2.5 rounded-md bg-white text-black"
                   required
@@ -160,7 +142,7 @@ export default function Landing() {
 
               <div className="btn-container flex gap-3 mt-4">
                 <button
-                  type="submit" // Marked as submit to trigger the form's onSubmit handler
+                  type="submit"
                   className="login-btn w-1/2 h-11 bg-[#2C49A4] hover:bg-blue-600 p-3 rounded-md text-white"
                 >
                   Login
@@ -170,6 +152,7 @@ export default function Landing() {
                 </button>
               </div>
             </form>
+            {error && <p className="text-red-500">{error}</p>}
           </div>
         </div>
       </div>

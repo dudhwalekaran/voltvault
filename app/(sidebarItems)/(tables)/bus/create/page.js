@@ -37,21 +37,35 @@ export default function BusCreate() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
+
+    // Retrieve the JWT from localStorage
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      setError("Please log in to submit the form");
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch("/api/bus", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Include JWT in the header
+        },
         body: JSON.stringify(formData),
       });
+
       const data = await response.json();
       if (response.ok) {
-        alert("Bus created successfully!");
+        alert(data.message); // "Bus created successfully" for admins, "Request submitted for approval" for users
         setFormData({ busName: "", location: "", voltagePower: "", nominalKV: "" });
       } else {
         setError(data.error);
       }
     } catch (error) {
-      setError("Failed to create bus");
+      setError("Failed to submit form");
     } finally {
       setLoading(false);
     }

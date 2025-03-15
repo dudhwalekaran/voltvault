@@ -186,7 +186,7 @@ export default function User() {
           <input
             type="text"
             placeholder="Search..."
-            className="w-full h-[45px] pl-16 pr-4 bg-[#F2F3F5] border border-gray-300 rounded-3xl placeholder:text-base font-medium text-sm leading-[45px]"
+            className="w-full h-[45px] pl-16 pr-4 bg-[#F3F4F6] border border-gray-300 rounded-3xl placeholder:text-base font-medium text-sm leading-[45px]"
           />
         </div>
 
