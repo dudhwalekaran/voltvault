@@ -28,13 +28,21 @@ export default function GeneratorCreate() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
+    setError(null);
+  
+    // Validate required fields
+    if (!location1 || !location2 || !kv) {
+      setError("Location 1, Location 2, and Voltage (kV) are required.");
+      setLoading(false);
+      return;
+    }
+  
     try {
-      const generatorData = {
+      const transmissionLineData = {
         location1,
         location2,
         type,
-        circuitBreakerStatus,
+        circuitBreakerStatus: circuitBreakerStatus ? "On" : "Off",
         busFrom,
         busSectionFrom,
         busTo,
@@ -50,44 +58,54 @@ export default function GeneratorCreate() {
         lineReactorFrom,
         lineReactorTo,
       };
-
-      console.log("Sending data to API:", generatorData);
-
+  
+      console.log("Sending data to API:", transmissionLineData);
+  
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No token found. Please log in.");
+      }
+  
       const response = await fetch("/api/transmission-line", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(generatorData),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(transmissionLineData),
       });
-
+  
       const data = await response.json();
       console.log("API Response:", data);
-
-      if (response.ok) {
-        alert("Transmission Line created successfully!");
-        setLocation1("");
-        setLocation2("");
-        setType("");
-        setCircuitBreakerStatus(false);
-        setBusFrom("");
-        setBusSectionFrom("");
-        setBusTo("");
-        setBusSectionTo("");
-        setKv("");
-        setPositiveSequenceRohmsperunitlength("");
-        setPositiveSequenceXohmsperunitlength("");
-        setPositiveSequenceBseimensperunitlength("");
-        setNegativeSequenceRohmsperunitlength("");
-        setNegativeSequenceXohmsperunitlength("");
-        setNegativeSequenceBseimensperunitlength("");
-        setLengthKm("");
-        setLineReactorFrom("");
-        setLineReactorTo("");
-      } else {
-        setError(data.error);
+  
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create Transmission Line");
       }
+  
+      alert(data.message); // Role-specific message from backend
+      // Reset form fields
+      setLocation1("");
+      setLocation2("");
+      setType("");
+      setCircuitBreakerStatus(false);
+      setBusFrom("");
+      setBusSectionFrom("");
+      setBusTo("");
+      setBusSectionTo("");
+      setKv("");
+      setPositiveSequenceRohmsperunitlength("");
+      setPositiveSequenceXohmsperunitlength("");
+      setPositiveSequenceBseimensperunitlength("");
+      setNegativeSequenceRohmsperunitlength("");
+      setNegativeSequenceXohmsperunitlength("");
+      setNegativeSequenceBseimensperunitlength("");
+      setLengthKm("");
+      setLineReactorFrom("");
+      setLineReactorTo("");
+      window.location.href = "/transmission-line"; // Redirect after success
     } catch (error) {
-      console.error("Error during fetch:", error);
-      setError("Failed to create generator");
+      console.error("Error during submission:", error.message);
+      setError(error.message || "Failed to create Transmission Line");
     } finally {
       setLoading(false);
     }

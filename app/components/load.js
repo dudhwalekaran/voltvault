@@ -20,11 +20,30 @@ export default function LoadEdit({ id }) {
 
   useEffect(() => {
     const fetchLoad = async () => {
-      try {
-        const response = await fetch(`/api/load/${id}`);
-        if (!response.ok) throw new Error("Failed to fetch load data");
-        const data = await response.json();
+      if (!id) {
+        setError("No ID provided for editing");
+        return;
+      }
 
+      try {
+        const token = localStorage.getItem("authToken");
+        if (!token) {
+          throw new Error("No token found. Please log in.");
+        }
+
+        const response = await fetch(`/api/load/${id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`, // Add Authorization header
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Failed to fetch load data: ${response.status}`);
+        }
+
+        const data = await response.json();
         if (data.success && data.load) {
           setLoadData({
             location: data.load.location || "",
@@ -51,7 +70,7 @@ export default function LoadEdit({ id }) {
       }
     };
 
-    if (id) fetchLoad();
+    fetchLoad();
   }, [id]);
 
   const handleChange = (e) => {
@@ -65,27 +84,39 @@ export default function LoadEdit({ id }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
-    // Get only changed fields
-    const updatedFields = Object.fromEntries(
-      Object.entries(loadData).filter(
-        ([key, value]) => value !== initialLoadData[key]
-      )
-    );
-
-    if (Object.keys(updatedFields).length === 0) {
-      setLoading(false);
-      return;
-    }
+    setError(null);
 
     try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No token found. Please log in.");
+      }
+
+      const updatedFields = Object.fromEntries(
+        Object.entries(loadData).filter(
+          ([key, value]) => value !== initialLoadData[key]
+        )
+      );
+
+      if (Object.keys(updatedFields).length === 0) {
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch(`/api/load/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Add Authorization header
+        },
         body: JSON.stringify(updatedFields),
       });
 
-      if (!response.ok) throw new Error("Failed to update load");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update load");
+      }
+
       router.push("/load");
     } catch (error) {
       setError(error.message);

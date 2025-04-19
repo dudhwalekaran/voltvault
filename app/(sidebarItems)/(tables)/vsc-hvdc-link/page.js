@@ -1,26 +1,26 @@
-'use client';
+"use client";
 
 import { useState, useEffect } from "react";
 import { FaSearch } from "react-icons/fa";
 import { FaPlus } from "react-icons/fa6";
-import Link from 'next/link'
-import * as XLSX from "xlsx"; //
+import Link from "next/link";
+import * as XLSX from "xlsx";
 
-export default function Loads() {
+export default function VscList() {
   const [vscs, setVscs] = useState([]);
-  const [vscsData, setVscsData] = useState(vscs);
+  const [vscsData, setVscsData] = useState([]);
+  const [filteredVscs, setFilteredVscs] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Function to download the table as an Excel file
   const downloadTableAsExcel = () => {
     const ws = XLSX.utils.json_to_sheet(vscsData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Ibr List");
-
-    // Download the Excel file
-    XLSX.writeFile(wb, "load_list.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Vsc List");
+    XLSX.writeFile(wb, "vsc_list.xlsx");
   };
 
-  // Function to handle file upload and parse Excel data
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -31,50 +31,115 @@ export default function Loads() {
       const wb = XLSX.read(binaryStr, { type: "binary" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(ws);
-
-      // Set the data to the state to render in the table
-      setVscsData(data);
+      setVscsData(data || []);
+      setFilteredVscs(data || []);
     };
     reader.readAsBinaryString(file);
   };
 
   useEffect(() => {
     const fetchVscs = async () => {
-      try {
-        const response = await fetch("/api/vsc");
-        const data = await response.json();
+      setLoading(true);
+      setError(null);
 
-        // Log the response data for debugging
-        console.log("API Response:", data);
+      const token = localStorage.getItem("authToken");
+      console.log("Token from localStorage:", token);
+      if (!token) {
+        setError("No token found. Please log in.");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/vsc", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const text = await response.text();
+        console.log("Raw Response:", text);
+        let data;
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch (parseError) {
+          console.error("Failed to parse JSON:", parseError);
+          setError("Invalid response format from server");
+          setLoading(false);
+          return;
+        }
+        console.log("Parsed API Response:", data);
 
         if (response.ok) {
-          setVscs(data.vscs || []); // Ensure the loades array is being set correctly
-          setVscsData(data.vscs || []); // Ensure loadesData is also updated
+          setVscs(data.vscs || []);
+          setVscsData(data.vscs || []);
+          setFilteredVscs(data.vscs || []);
         } else {
-          console.error("Failed to fetch Vsc:", data.error); // Log error if response is not ok
+          setError(data.error || `Failed to fetch VSCs (Status: ${response.status})`);
         }
       } catch (error) {
-        console.error("Error fetching Vsc:", error); // Log error in case of network issues
+        console.error("Error fetching VSCs:", error);
+        setError("Failed to fetch VSCs due to a network error");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchVscs();
   }, []);
 
-  // Handle delete operation
-  const handleDelete = async (id) => {
-    const response = await fetch(`/api/vsc/${id}`, {
-      method: "DELETE",
-    });
+  useEffect(() => {
+    let filtered = vscsData;
 
-    if (response.ok) {
-      // Remove the deleted load from the state
-      setVscs(vscs.filter((vscs) => vscs._id !== id));
-      setVscsData(vscs.filter((vscs) => vscs._id !== id)); // Update loadesData
-    } else {
-      alert("Failed to delete vsc");
+    if (searchQuery) {
+      filtered = filtered.filter((vsc) =>
+        (vsc.vsc || vsc.vscFact || "").toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    setFilteredVscs(filtered);
+  }, [searchQuery, vscsData]);
+
+  const handleDelete = async (id) => {
+    const token = localStorage.getItem("authToken");
+    console.log("Token from localStorage (delete):", token);
+    if (!token) {
+      setError("No token found. Please log in.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/vsc/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const text = await response.text();
+      console.log("Delete Raw Response:", text);
+      const data = text ? JSON.parse(text) : {};
+      console.log("Delete Parsed API Response:", data);
+
+      if (response.ok) {
+        const updatedVscs = vscs.filter((vsc) => vsc._id !== id);
+        setVscs(updatedVscs);
+        setVscsData(updatedVscs);
+        setFilteredVscs(updatedVscs);
+      } else {
+        alert(data.error || "Failed to delete VSC");
+      }
+    } catch (error) {
+      console.error("Error deleting VSC:", error);
+      alert("Failed to delete VSC due to a network error");
     }
   };
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
 
   return (
     <div className="font-bold text-4xl">
@@ -87,7 +152,9 @@ export default function Loads() {
           </span>
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Search by Vsc-hvdc-link..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-[45px] pl-16 pr-4 bg-[#F2F3F5] border border-gray-300 rounded-3xl placeholder:text-base font-medium text-sm leading-[45px]"
           />
         </div>
@@ -102,7 +169,6 @@ export default function Loads() {
 
       <h1 className="text-3xl font-bold mb-6">Vsc-hvdc-link List</h1>
       <div className="container mx-auto my-6 px-4 border border-gray-300 shadow-xl rounded-lg">
-        {/* Options to upload and download */}
         <div className="mb-4 flex justify-between">
           <div className="space-x-4">
             <button
@@ -120,7 +186,6 @@ export default function Loads() {
           </div>
         </div>
 
-        {/* Wrapper for horizontal scrolling */}
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white mb-5 shadow-md rounded-sm table-auto border border-[#F1F5F9]">
             <thead className="bg-[#F1F5F9]">
@@ -132,7 +197,7 @@ export default function Loads() {
                   Vsc ID
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                 Vsc-hvdc-link
+                  Vsc-hvdc-link
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal whitespace-nowrap">
                   Actions
@@ -141,20 +206,24 @@ export default function Loads() {
             </thead>
 
             <tbody>
-              {vscsData.length === 0 ? (
+              {filteredVscs.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="text-center py-4 font-normal text-sm">
-                    No Vsc-hvdc-link
+                  <td colSpan="4" className="text-center py-4 font-normal text-sm">
+                    No Vsc-hvdc-links available
                   </td>
                 </tr>
               ) : (
-                vscsData.map((vsc, index) => (
-                  <tr key={index} className="border-b">
+                filteredVscs.map((vsc, index) => (
+                  <tr key={vsc._id || index} className="border-b">
                     <td className="py-2 px-6 border-r">
                       <input type="checkbox" value={vsc._id} />
                     </td>
-                    <td className="py-3 px-6 text-sm font-normal border-r">{vsc._id}</td>
-                    <td className="py-3 px-6 text-sm font-normal border-r">{vsc.vsc}</td>
+                    <td className="py-3 px-6 text-sm font-normal border-r">
+                      {vsc._id || "N/A"}
+                    </td>
+                    <td className="py-3 px-6 text-sm font-normal border-r">
+                      {vsc.vsc || vsc.vscFact || "N/A"}
+                    </td>
                     <td className="py-3 px-6">
                       <div className="flex space-x-4">
                         <Link

@@ -1,56 +1,132 @@
-import connectionToDatabase from "@/lib/db";
-import Bus from "@/models/Bus";
+import { NextResponse } from "next/server";
+import connect from "@/lib/db"; // MongoDB connection helper
+import Bus from "@/models/Bus"; // Bus mongoose model
+import History from "@/models/History"; // History model for logging actions
+import jwt from "jsonwebtoken";
 
-// DELETE method (for deleting a specific bus)
-export async function DELETE(req, { params }) {
+// GET: Fetch bus details by ID
+export async function GET(req, { params }) {
   const { id } = params;
-  await connectionToDatabase();
+  await connect();
 
   try {
-    const deletedBus = await Bus.findByIdAndDelete(id);
-    if (!deletedBus) {
-      return new Response(JSON.stringify({ success: false, message: "Bus not found" }), {
-        status: 404,
-      });
+    const bus = await Bus.findById(id);
+    if (!bus) {
+      return NextResponse.json({ success: false, message: "Bus not found" }, { status: 404 });
     }
-    return new Response(JSON.stringify({ success: true, message: "Bus deleted successfully" }), {
-      status: 200,
-    });
+    return NextResponse.json(bus, { status: 200 });
   } catch (error) {
-    console.error(error);
-    return new Response(JSON.stringify({ success: false, message: "Server error" }), {
-      status: 500,
-    });
+    console.error("GET error:", error);
+    return NextResponse.json({ success: false, message: "Server error", details: error.message }, { status: 500 });
   }
 }
 
-// PATCH method (for updating a specific bus)
+// PATCH: Update bus details by ID
 export async function PATCH(req, { params }) {
-  const { id } = params;
-  await connectionToDatabase();
-
   try {
+    const { id } = params;
+    await connect();
+
+    // Extract and verify JWT
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Unauthorized: No token provided or incorrect format" }, { status: 401 });
+    }
+
+    const token = authHeader.split(" ")[1];
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (error) {
+      return NextResponse.json({ error: "Unauthorized: Invalid token", details: error.message }, { status: 401 });
+    }
+
+    if (decoded.status !== "admin") {
+      return NextResponse.json({ error: "Unauthorized: Admins only" }, { status: 403 });
+    }
+
     const body = await req.json();
     const { busName, location, voltagePower, nominalKV } = body;
 
     const updatedBus = await Bus.findByIdAndUpdate(
       id,
       { busName, location, voltagePower, nominalKV },
-      { new: true } // Return the updated document
+      { new: true }
     );
 
     if (!updatedBus) {
-      return new Response(JSON.stringify({ success: false, message: "Bus not found" }), {
-        status: 404,
-      });
+      return NextResponse.json({ success: false, message: "Bus not found" }, { status: 404 });
     }
-    return new Response(JSON.stringify({ success: true, message: "Bus updated successfully", data: updatedBus }), {
-      status: 200,
+
+    // Log the update action to History
+    const history = new History({
+      action: "update",
+      dataType: "Bus",
+      recordId: id,
+      adminEmail: decoded.email,
+      adminName: decoded.name,
+      details: `Updated Bus: ${JSON.stringify({ busName, location, voltagePower, nominalKV })}`,
     });
+    await history.save();
+    console.log("History entry created:", history);
+
+    return NextResponse.json(updatedBus, { status: 200 });
   } catch (error) {
-    console.error(error);
-    return new Response(JSON.stringify({ success: false, message: "Server error" }), {
-      status: 500,
+    console.error("PATCH error:", error);
+    return NextResponse.json(
+      { success: false, message: "Server error", details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE: Delete bus by ID
+export async function DELETE(req, { params }) {
+  try {
+    const { id } = params;
+    await connect();
+
+    // Extract and verify JWT
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Unauthorized: No token provided or incorrect format" }, { status: 401 });
+    }
+
+    const token = authHeader.split(" ")[1];
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (error) {
+      return NextResponse.json({ error: "Unauthorized: Invalid token", details: error.message }, { status: 401 });
+    }
+
+    if (decoded.status !== "admin") {
+      return NextResponse.json({ error: "Unauthorized: Admins only" }, { status: 403 });
+    }
+
+    const deletedBus = await Bus.findByIdAndDelete(id);
+    if (!deletedBus) {
+      return NextResponse.json({ success: false, message: "Bus not found" }, { status: 404 });
+    }
+
+    // Log the delete action to History
+    const history = new History({
+      action: "delete",
+      dataType: "Bus",
+      recordId: id,
+      adminEmail: decoded.email,
+      adminName: decoded.name,
+      details: `Deleted Bus: ${JSON.stringify(deletedBus)}`,
     });
+    await history.save();
+    console.log("History entry created:", history);
+
+    return NextResponse.json({ success: true, message: "Bus deleted successfully" }, { status: 200 });
+  } catch (error) {
+    console.error("DELETE error:", error);
+    return NextResponse.json(
+      { success: false, message: "Server error", details: error.message },
+      { status: 500 }
+    );
   }
 }

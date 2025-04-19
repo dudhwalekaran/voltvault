@@ -31,11 +31,19 @@ export default function GeneratorCreate() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
+
+    // Validate required fields
+    if (!location || !mva || !kvprimary) {
+      setError("Location, MVA, and Primary Voltage are required.");
+      setLoading(false);
+      return;
+    }
 
     try {
-      const generatorData = {
+      const transformerData = {
         location,
-        circuitBreakerStatus,
+        circuitBreakerStatus: circuitBreakerStatus ? "On" : "Off",
         busFrom,
         busSectionFrom,
         busTo,
@@ -54,48 +62,57 @@ export default function GeneratorCreate() {
         angle,
       };
 
-      console.log("Sending data to API:", generatorData); // Log data being sent
+      console.log("Sending data to API:", transformerData);
+
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No token found. Please log in.");
+      }
 
       const response = await fetch("/api/transformer-two-winding", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json", // Ensure content-type is set to JSON
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(generatorData), // Send data as JSON string
+        body: JSON.stringify(transformerData),
       });
 
-      const data = await response.json(); // Parse the response as JSON
-      console.log("API Response:", data); // Log the response data
+      const data = await response.json();
+      console.log("API Response:", data);
 
-      if (response.ok) {
-        alert("Two Winding created successfully!");
-        // Optionally reset form fields
-        setLocation("");
-        setCircuitBreakerStatus(false);
-        setBusFrom("");
-        setBusSectionFrom("");
-        setBusTo("");
-        setBusSectionTo("");
-        setMva("");
-        setKvprimary("");
-        setKvsecondary("");
-        setR("");
-        setX("");
-        setTapPrimary("");
-        setTapSecondary("");
-        setPrimaryWindingConnection("");
-        setPrimaryConnectionGrounding("");
-        setSecondaryWindingConnection("");
-        setSecondaryConnectionGrounding("");
-        setAngle("");
-      } else {
-        setError(data.error); // Handle any error response
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Failed to create Transformer Two Winding"
+        );
       }
+
+      alert(data.message); // Role-specific message from backend
+      // Reset form fields
+      setLocation("");
+      setCircuitBreakerStatus(false);
+      setBusFrom("");
+      setBusSectionFrom("");
+      setBusTo("");
+      setBusSectionTo("");
+      setMva("");
+      setKvprimary("");
+      setKvsecondary("");
+      setR("");
+      setX("");
+      setTapPrimary("");
+      setTapSecondary("");
+      setPrimaryWindingConnection("");
+      setPrimaryConnectionGrounding("");
+      setSecondaryWindingConnection("");
+      setSecondaryConnectionGrounding("");
+      setAngle("");
+      window.location.href = "/transformer-two-winding"; // Redirect after success
     } catch (error) {
-      console.error("Error during fetch:", error); // Log any fetch errors
-      setError("Failed to create generator");
+      console.error("Error during submission:", error.message);
+      setError(error.message || "Failed to create Transformer Two Winding");
     } finally {
-      setLoading(false); // Stop loading state
+      setLoading(false);
     }
   };
 
@@ -138,7 +155,7 @@ export default function GeneratorCreate() {
 
         <div className="flex flex-col">
           <label htmlFor="busTo" className="text-base font-normal mb-2">
-          busFrom
+            busFrom
           </label>
           <input
             type="text"
@@ -152,7 +169,7 @@ export default function GeneratorCreate() {
 
         <div className="flex flex-col">
           <label htmlFor="busSectionTo" className="text-base font-normal mb-2">
-          busSectionFrom
+            busSectionFrom
           </label>
           <input
             type="text"
@@ -166,7 +183,7 @@ export default function GeneratorCreate() {
 
         <div className="flex flex-col">
           <label htmlFor="type" className="text-base font-normal mb-2">
-          busTo
+            busTo
           </label>
           <input
             type="text"
@@ -180,7 +197,7 @@ export default function GeneratorCreate() {
 
         <div className="flex flex-col">
           <label htmlFor="rotor" className="text-base font-normal mb-2">
-          busSectionTo
+            busSectionTo
           </label>
           <input
             type="text"
@@ -189,20 +206,6 @@ export default function GeneratorCreate() {
             className="p-2 border border-gray-300 font-normal text-base rounded-lg"
             value={busSectionTo}
             onChange={(e) => setBusSectionTo(e.target.value)}
-          />
-        </div>
-
-        <div className="flex flex-col">
-          <label htmlFor="mw" className="text-base font-normal mb-2">
-            mva
-          </label>
-          <input
-            type="text"
-            id="mw"
-            placeholder="Mva"
-            className="p-2 border border-gray-300 font-normal text-base rounded-lg"
-            value={mva}
-            onChange={(e) => setMva(e.target.value)}
           />
         </div>
 
@@ -222,7 +225,7 @@ export default function GeneratorCreate() {
 
         <div className="flex flex-col">
           <label htmlFor="kv" className="text-base font-normal mb-2">
-          kvprimary
+            kvprimary
           </label>
           <input
             type="text"
@@ -282,9 +285,7 @@ export default function GeneratorCreate() {
             placeholder="x"
             className="p-2 border border-gray-300 font-normal text-base rounded-lg"
             value={x}
-            onChange={(e) =>
-              setX(e.target.value)
-            }
+            onChange={(e) => setX(e.target.value)}
           />
         </div>
 
@@ -318,9 +319,7 @@ export default function GeneratorCreate() {
             placeholder="TapSecondary"
             className="p-2 border border-gray-300 font-normal text-base rounded-lg"
             value={TapSecondary}
-            onChange={(e) =>
-              setTapSecondary(e.target.value)
-            }
+            onChange={(e) => setTapSecondary(e.target.value)}
           />
         </div>
 
@@ -337,9 +336,7 @@ export default function GeneratorCreate() {
             placeholder="primaryWindingConnection"
             className="p-2 border border-gray-300 font-normal text-base rounded-lg"
             value={primaryWindingConnection}
-            onChange={(e) =>
-              setPrimaryWindingConnection(e.target.value)
-            }
+            onChange={(e) => setPrimaryWindingConnection(e.target.value)}
           />
         </div>
 
@@ -373,9 +370,7 @@ export default function GeneratorCreate() {
             placeholder="secondaryWindingConnection"
             className="p-2 border border-gray-300 font-normal text-base rounded-lg"
             value={secondaryWindingConnection}
-            onChange={(e) =>
-              setSecondaryWindingConnection(e.target.value)
-            }
+            onChange={(e) => setSecondaryWindingConnection(e.target.value)}
           />
         </div>
 
@@ -392,9 +387,7 @@ export default function GeneratorCreate() {
             placeholder="secondaryConnectionGrounding"
             className="p-2 border border-gray-300 font-normal text-base rounded-lg"
             value={secondaryConnectionGrounding}
-            onChange={(e) =>
-              setSecondaryConnectionGrounding(e.target.value)
-            }
+            onChange={(e) => setSecondaryConnectionGrounding(e.target.value)}
           />
         </div>
 
@@ -411,9 +404,7 @@ export default function GeneratorCreate() {
             placeholder="angle"
             className="p-2 border border-gray-300 font-normal text-base rounded-lg"
             value={angle}
-            onChange={(e) =>
-              setAngle(e.target.value)
-            }
+            onChange={(e) => setAngle(e.target.value)}
           />
         </div>
         <div className="flex space-x-4 mt-5">

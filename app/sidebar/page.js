@@ -1,18 +1,69 @@
 "use client";
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaUser, FaHistory, FaTable } from "react-icons/fa";
 import { GrDocumentUser } from "react-icons/gr";
-import { IoIosArrowDown } from "react-icons/io"; // Submenu arrow icon
+import { IoIosArrowDown } from "react-icons/io";
+import { useRouter } from "next/navigation";
+import { FaUserCircle, FaSignOutAlt } from "react-icons/fa"; // Icons for Profile and Sign out
 
 const Sidebar = () => {
   const [openMenu, setOpenMenu] = useState(""); // Track open submenu
+  const [user, setUser] = useState(null); // Store logged-in user data
+  const [showProfileCard, setShowProfileCard] = useState(false); // Toggle profile card
+  const router = useRouter();
 
   // Toggle submenu
   const toggleSubmenu = (menu) => {
     setOpenMenu((prev) => (prev === menu ? "" : menu));
   };
 
+  // Fetch logged-in user data on mount
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+        if (!token) {
+          router.push("/");
+          return;
+        }
+
+        const response = await fetch("/api/user/profile", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch user data");
+        }
+
+        const data = await response.json();
+        setUser(data);
+      } catch (error) {
+        console.error("Error fetching user:", error.message);
+        router.push("/");
+      }
+    };
+
+    fetchUser();
+  }, [router]);
+
+  // Generate initials from the user's name
+  const generateInitials = (name) => {
+    if (typeof name !== "string" || name.trim() === "") return "";
+    const nameParts = name.trim().split(" ").filter(Boolean);
+    if (nameParts.length === 0) return "";
+    return nameParts.map(part => part.charAt(0).toUpperCase()).slice(0, 2).join("");
+  };
+
+  // Handle sign out
+  const handleSignOut = () => {
+    localStorage.removeItem("authToken");
+    router.push("/");
+  };
 
   return (
     <div className="w-48 h-screen bg-gray-100 text-black flex flex-col p-4 overflow-y-auto border-r-2 border-gray-300 transition-all duration-300 shadow-[inset_0_4px_10px_rgba(0,0,0,0.3)]">
@@ -28,10 +79,7 @@ const Sidebar = () => {
       <hr className="border-t-2 border-gray-300 w-full" />
 
       {/* User Menu */}
-      <div
-        className="flex items-center text-xl space-x-2 p-2 cursor-pointer hover:bg-gray-300 rounded-lg mb-2 mt-3"
-        // onClick={handleUser} // No routing, but you can add a click handler for actions
-      >
+      <div className="flex items-center text-xl space-x-2 p-2 cursor-pointer hover:bg-gray-300 rounded-lg mb-2 mt-3">
         <FaUser />
         <span>
           <Link href="/users">User</Link>
@@ -39,10 +87,7 @@ const Sidebar = () => {
       </div>
 
       {/* History Menu */}
-      <div
-        className="flex items-center text-xl space-x-2 p-2 cursor-pointer hover:bg-gray-300 rounded-lg mb-2"
-        // onClick={handleHistory} // No routing, but you can add a click handler for actions
-      >
+      <div className="flex items-center text-xl space-x-2 p-2 cursor-pointer hover:bg-gray-300 rounded-lg mb-2">
         <FaHistory />
         <span>
           <Link href="/history">History</Link>
@@ -147,6 +192,54 @@ const Sidebar = () => {
           <div className="p-2 cursor-pointer hover:bg-gray-300 rounded-lg">
             <Link href="/vsc-hvdc-link">VSC-HVDC Link</Link>
           </div>
+        </div>
+      )}
+
+      {/* Spacer to push profile section to the bottom */}
+      <div className="flex-grow" />
+
+      {/* Profile Section at the Bottom */}
+      {user && (
+        <div className="relative">
+          <div
+            className="flex items-center space-x-2 p-2 cursor-pointer hover:bg-gray-300 rounded-lg"
+            onClick={() => setShowProfileCard(!showProfileCard)}
+          >
+            <div className="w-8 h-8 flex items-center justify-center rounded-full bg-pink-500 text-white text-lg font-bold">
+              {generateInitials(user.name)}
+            </div>
+            <span className="text-sm font-medium">{user.name}</span>
+          </div>
+
+          {/* Profile Card Dropdown */}
+          {showProfileCard && (
+            <div className="absolute bottom-12 left-12 w-64 bg-white border rounded-lg shadow-lg p-4 z-10">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 flex items-center justify-center rounded-full bg-pink-500 text-white text-xl font-bold">
+                  {generateInitials(user.name)}
+                </div>
+                <div>
+                  <p className="text-base font-semibold">{user.name}</p>
+                  <p className="text-sm text-gray-500">{user.email}</p>
+                </div>
+              </div>
+              <div className="flex space-x-2">
+                <Link href="/profile">
+                  <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-100">
+                    <FaUserCircle />
+                    <span>Profile</span>
+                  </button>
+                </Link>
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <FaSignOutAlt />
+                  <span>Sign out</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

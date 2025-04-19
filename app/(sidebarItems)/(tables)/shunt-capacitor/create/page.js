@@ -18,18 +18,10 @@ export default function BusCreate() {
     setLoading(true);
 
     // Validate that all required fields are filled
-    if (
-      !location ||
-      !busFrom ||
-      !busSectionFrom ||
-      kv === "" ||
-      mva === ""
-    ) {
+    if (!location || !busFrom || !busSectionFrom || kv === "" || mva === "") {
       setError("All fields are required.");
       return;
     }
-
-    setLoading(true);
 
     try {
       const shuntData = {
@@ -42,10 +34,16 @@ export default function BusCreate() {
       };
       console.log("Sending data to API:", shuntData);
 
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No token found. Please log in.");
+      }
+
       const response = await fetch("/api/shunt-capacitor", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(shuntData),
       });
@@ -54,19 +52,19 @@ export default function BusCreate() {
       console.log("API Response:", data);
 
       if (response.ok) {
-        alert("Shunt created successfully!");
+        alert(data.message); // Role-specific message from backend
         setLocation("");
-        setCircuitBreaker(false); // Reset circuit to false
+        setCircuitBreaker(false);
         setBusFrom("");
         setBusSectionFrom("");
-        setKv(""); // Reset pmw to empty string
-        setMva(""); // Reset qmvar to empty string
+        setKv("");
+        setMva("");
       } else {
         setError(data.error);
       }
     } catch (error) {
       console.error("Error during fetch:", error);
-      setError("Failed to create bus");
+      setError(error.message || "Failed to create Shunt Capacitor");
     } finally {
       setLoading(false);
     }
@@ -180,7 +178,7 @@ export default function BusCreate() {
           >
             {loading ? "Submitting..." : "Submit"}
           </button>
-          <Link href="/series-capacitor">
+          <Link href="/shunt-capacitor">
             <button
               type="button"
               className="bg-[#EF4444] text-white w-56 font-medium text-base py-2 px-6 rounded-lg hover:bg-gray-600"

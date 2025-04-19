@@ -2,44 +2,57 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-export default function BusCreate() {
+export default function SeriesFactCreate() {
   const [series, setSeries] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const router = useRouter();
 
-  // Inside your BusCreate Component
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
+
+    const seriesData = { series };
+    console.log("Sending data to API:", seriesData);
+
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      setError("No token found. Please log in.");
+      setLoading(false);
+      return;
+    }
 
     try {
-      const seriesData = { series };
-      console.log("Sending data to API:", seriesData); // Log data being sent
-
       const response = await fetch("/api/series-fact", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json", // Ensure content-type is set to JSON
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(seriesData), // Send data as JSON string
+        body: JSON.stringify(seriesData),
       });
 
-      const data = await response.json(); // Parse the response as JSON
-      console.log("API Response:", data); // Log the response data
+      const data = await response.json();
+      console.log("API Response:", data);
 
-      if (response.ok) {
-        alert("Series Fact created successfully!");
-        // Optionally reset form fields
+      if (response.ok && data.success) {
+        // Success case
+        alert(data.message || "Series Fact created successfully!");
         setSeries("");
+        // Redirect to the series fact list page
+        router.push("/series-fact");
       } else {
-        setError(data.error); // Handle any error response
+        // Failure case
+        setError(data.error || "Failed to create Series Fact");
       }
     } catch (error) {
-      console.error("Error during fetch:", error); // Log any fetch errors
-      setError("Failed to create Series Fact");
+      console.error("Error during fetch:", error);
+      setError("Failed to create Series Fact due to a network error");
     } finally {
-      setLoading(false); // Stop loading state
+      setLoading(false);
     }
   };
 
@@ -48,19 +61,20 @@ export default function BusCreate() {
       <h1>Create Series Fact</h1>
       <form className="grid grid-cols-2 gap-4 mt-6" onSubmit={handleSubmit}>
         <div className="flex flex-col">
-          <label htmlFor="busName" className="text-base font-normal mb-2">
+          <label htmlFor="series" className="text-base font-normal mb-2">
             Series Fact
           </label>
           <input
             type="text"
-            id="busName"
+            id="series"
             placeholder="Series Fact"
             className="p-2 border border-gray-300 font-normal text-base rounded-lg"
             value={series}
             onChange={(e) => setSeries(e.target.value)}
+            required
           />
         </div>
-        
+
         {error && <p className="text-red-500">{error}</p>}
 
         <div className="flex space-x-4 mt-5">

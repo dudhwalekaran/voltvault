@@ -24,62 +24,62 @@ export async function POST(req) {
           { status: "accepted" },
           { new: true }
         );
-
+    
         if (!acceptedUser) {
-          return new Response(JSON.stringify({ message: "User not found" }), {
+          return new Response(JSON.stringify({ success: false, message: "User not found" }), {
             status: 404,
           });
         }
-
+    
         await AcceptedUser.create({
           name: acceptedUser.name,
           email: acceptedUser.email,
           password: acceptedUser.password,
-          status: "active", // Set status to active
-          adminStatus: "user", // Set admin status to user
-          lastLogin: new Date(), // Update last login timestamp
-          createdAt: new Date(), // Set createdAt field
+          status: "active",
+          adminStatus: "user",
+          lastLogin: new Date(),
+          createdAt: new Date(),
         });
-
+    
         await sendEmail(
           acceptedUser.email,
           "Your request has been accepted to VoltVault IITB",
           "You can now log in with your credentials."
         );
-
+    
         return new Response(
-          JSON.stringify({ message: "User accepted successfully" }),
+          JSON.stringify({ success: true, message: "User accepted successfully" }),
           { status: 200 }
         );
       }
-
+    
       case "reject": {
         const rejectedUser = await User.findByIdAndUpdate(
           id,
           { status: "rejected" },
           { new: true }
         );
-
+    
         if (!rejectedUser) {
-          return new Response(JSON.stringify({ message: "User not found" }), {
+          return new Response(JSON.stringify({ success: false, message: "User not found" }), {
             status: 404,
           });
         }
-
+    
         await sendEmail(
           rejectedUser.email,
           "Your request has been rejected to VoltVault IITB",
           "Sorry, your request has been rejected."
         );
-
+    
         return new Response(
-          JSON.stringify({ message: "User rejected successfully" }),
+          JSON.stringify({ success: true, message: "User rejected successfully" }),
           { status: 200 }
         );
       }
-
+    
       default:
-        return new Response(JSON.stringify({ message: "Invalid action" }), {
+        return new Response(JSON.stringify({ success: false, message: "Invalid action" }), {
           status: 400,
         });
     }

@@ -6,8 +6,26 @@ import { FaSearch } from "react-icons/fa";
 export default function LoginRequest() {
   const [users, setUsers] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [message, setMessage] = useState(""); // Add state for success/error message
   const recordsPerPage = 20;
   const [showPopup, setShowPopup] = useState(null);
+
+  // Function to fetch users (reused for refreshing after actions)
+  const fetchUsers = async () => {
+    try {
+      console.log("Fetching users...");
+      const response = await fetch("/api/fetch-login-user");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log("Fetched data:", data);
+      setUsers(data.map((user) => ({ ...user, password: undefined })));
+    } catch (error) {
+      console.error("Error fetching users:", error.message);
+      setMessage(`Error fetching users: ${error.message}`);
+    }
+  };
 
   const handlePopupAction = async (action, user) => {
     try {
@@ -22,8 +40,6 @@ export default function LoginRequest() {
               method: "POST",
             }
           );
-          const result = await response.json();
-          console.log(result);  // Check for errors or success messages
           break;
 
         case "delete":
@@ -37,43 +53,29 @@ export default function LoginRequest() {
 
         default:
           console.error("Unknown action");
+          setMessage("Unknown action");
           return;
       }
 
-      if (response.ok) {
-        alert(
-          `${
-            action.charAt(0).toUpperCase() + action.slice(1)
-          } action performed successfully!`
-        );
+      const result = await response.json();
+      console.log("Action result:", result);
+
+      if (response.ok && result.success) {
+        setMessage(result.message); // Display the success message
+        await fetchUsers(); // Refresh the user list
         if (action === "delete") {
           setUsers(users.filter((u) => u._id !== user._id));
         }
       } else {
-        const errorData = await response.json();
-        alert(`Error: ${errorData.message}`);
+        setMessage(result.message || "Action failed");
       }
     } catch (error) {
       console.error(`Error performing ${action} action:`, error);
+      setMessage(`Error performing ${action}: ${error.message}`);
     }
   };
 
   useEffect(() => {
-    async function fetchUsers() {
-      try {
-        console.log("Fetching users...");
-        const response = await fetch("/api/fetch-login-user"); // Corrected API endpoint
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log("Fetched data:", data);
-        setUsers(data.map((user) => ({ ...user, password: undefined }))); // Exclude password
-      } catch (error) {
-        console.error("Error fetching users:", error.message);
-      }
-    }
-
     fetchUsers();
   }, []);
 
@@ -89,23 +91,22 @@ export default function LoginRequest() {
 
   function generateInitials(name) {
     if (typeof name !== "string" || name.trim() === "") {
-      return ""; // Return an empty string if name is not a valid string or is empty
+      return "";
     }
 
-    const nameParts = name.trim().split(" ").filter(Boolean); // Split by spaces and remove empty entries
+    const nameParts = name.trim().split(" ").filter(Boolean);
     if (nameParts.length === 0) {
-      return ""; // If nameParts is empty, return an empty string
+      return "";
     }
 
     const initials = nameParts
-      .map((part) => part.charAt(0).toUpperCase()) // Get the first letter of each part
-      .slice(0, 2) // Take only the first two initials
-      .join(""); // Join them into a string
+      .map((part) => part.charAt(0).toUpperCase())
+      .slice(0, 2)
+      .join("");
 
     return initials;
   }
 
-  // Function to generate a random background color
   function getRandomBgColor() {
     const colors = [
       "bg-blue-600",
@@ -132,7 +133,6 @@ export default function LoginRequest() {
       "bg-[#C88A65]",
       "bg-[#841B2D]",
       "bg-[#848482]",
-      "bg-[#848482]",
       "bg-[#FF5733]",
       "bg-[#33FF57]",
       "bg-[#3357FF]",
@@ -143,7 +143,6 @@ export default function LoginRequest() {
       "bg-[#FF1493]",
       "bg-[#00BFFF]",
       "bg-[#ADFF2F]",
-      "bg-[#FFD700]",
       "bg-[#FFD700]",
       "bg-[#FF0000]",
       "bg-[#00FF00]",
@@ -228,6 +227,13 @@ export default function LoginRequest() {
     <div>
       <h1 className="font-bold text-4xl mb-4">Login Requests</h1>
 
+      {/* Display success/error message */}
+      {message && (
+        <div className={`mb-4 p-2 rounded ${message.includes("Error") ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
+          {message}
+        </div>
+      )}
+
       <div className="">
         {/* Search Bar */}
         <div className="flex items-center space-x-10 mb-2">
@@ -257,14 +263,12 @@ export default function LoginRequest() {
 
         {/* Record Count and Pagination */}
         <div className="flex justify-between items-center mt-4">
-          {/* Records Info */}
           <div className="text-black font-medium">
-            {totalRecords > 0
+            {users.length > 0
               ? `Showing ${startRecord} - ${endRecord} of ${totalRecords} records`
               : "No records found"}
           </div>
 
-          {/* Pagination */}
           <div className="flex space-x-2">
             {Array.from({ length: totalPages }, (_, i) => (
               <button

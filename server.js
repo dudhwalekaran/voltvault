@@ -10,6 +10,6 @@ app.use('/users', userRoutes); // This will handle routes like /users/accept/:us
 
 // Start the server
 const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server is running on http://0.0.0.0:${PORT}`);
 });

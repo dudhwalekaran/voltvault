@@ -12,9 +12,30 @@ export default function LccForm({ id }) {
   useEffect(() => {
     const fetchLcc = async () => {
       try {
-        const response = await fetch(`/api/lcc/${id}`);
-        if (!response.ok) throw new Error("Failed to fetch LCC data");
+        // Retrieve the token from localStorage (or wherever it's stored)
+        const token = localStorage.getItem("authToken");
+        if (!token) {
+          throw new Error("No authentication token found. Please log in.");
+        }
+
+        const response = await fetch(`/api/lcc/${id}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // Add the Authorization header
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to fetch LCC data");
+        }
+
         const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.message || "Failed to fetch LCC data");
+        }
+
         setLcc(data.lcc?.lcc || ""); // Ensure correct object structure
       } catch (error) {
         setError(error.message);
@@ -28,13 +49,31 @@ export default function LccForm({ id }) {
     setLoading(true);
 
     try {
+      // Retrieve the token from localStorage (or wherever it's stored)
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No authentication token found. Please log in.");
+      }
+
       const response = await fetch(`/api/lcc/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Add the Authorization header
+        },
         body: JSON.stringify({ lcc }),
       });
 
-      if (!response.ok) throw new Error("Failed to update LCC");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update LCC");
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || "Failed to update LCC");
+      }
+
       router.push("/lcc-hvdc-link"); // Redirect after successful update
     } catch (error) {
       setError(error.message);
@@ -45,11 +84,15 @@ export default function LccForm({ id }) {
 
   return (
     <div className="m-4 font-bold text-3xl">
-      <h1 className="text-3xl text-gray-500 font-bold mb-4">Edit Lcc : <span className='font-semibold text-black text-xl'>{id}</span></h1>
+      <h1 className="text-3xl text-gray-500 font-bold mb-4">
+        Edit Lcc: <span className="font-semibold text-black text-xl">{id}</span>
+      </h1>
       {error && <p className="text-red-500">{error}</p>}
       <form className="grid grid-cols-2 gap-4 mt-6" onSubmit={handleSubmit}>
         <div className="flex flex-col">
-          <label htmlFor="lccName" className="text-base font-normal mb-2">LCC Name</label>
+          <label htmlFor="lccName" className="text-base font-normal mb-2">
+            LCC Name
+          </label>
           <input
             type="text"
             id="lccName"

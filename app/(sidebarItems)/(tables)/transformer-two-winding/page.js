@@ -4,23 +4,21 @@ import { useState, useEffect } from "react";
 import { FaSearch } from "react-icons/fa";
 import { FaPlus } from "react-icons/fa6";
 import Link from "next/link";
-import * as XLSX from "xlsx"; // Add this for Excel functionality
+import * as XLSX from "xlsx";
 
-export default function Generator() {
+export default function TransformerTwoWindingList() {
   const [transformers, setTransformers] = useState([]);
-  const [transformersData, setTransformersData] = useState(transformers);
+  const [transformersData, setTransformersData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Function to download the table as an Excel file
   const downloadTableAsExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(generatorsData);
+    const ws = XLSX.utils.json_to_sheet(transformersData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Generator List");
-
-    // Download the Excel file
-    XLSX.writeFile(wb, "generator_list.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Transformer Two Winding List");
+    XLSX.writeFile(wb, "transformer_two_winding_list.xlsx");
   };
 
-  // Function to handle file upload and parse Excel data
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -31,51 +29,84 @@ export default function Generator() {
       const wb = XLSX.read(binaryStr, { type: "binary" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(ws);
-
-      // Set the data to the state to render in the table
-      setGeneratorsData(data);
+      setTransformersData(data || []);
     };
     reader.readAsBinaryString(file);
   };
 
   useEffect(() => {
     const fetchTransformers = async () => {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        setError("No token found. Please log in.");
+        setLoading(false);
+        return;
+      }
+
       try {
-        const response = await fetch("/api/transformer-two-winding");
+        const response = await fetch("/api/transformer-two-winding", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
         const data = await response.json();
+        console.log("API Response:", data);
 
         if (response.ok) {
-          setTransformers(data.transformers); // Set generators if fetch is successful
-          setTransformersData(data.transformers); // Set generatorsData for table display
+          setTransformers(data.transformers || []);
+          setTransformersData(data.transformers || []);
         } else {
-          console.error("Failed to fetch generators:", data.error); // Log error if response is not ok
+          setError(data.error || "Failed to fetch Transformer Two Windings");
         }
       } catch (error) {
-        console.error("Error fetching generators:", error); // Log error in case of network issues
+        console.error("Error fetching Transformer Two Windings:", error);
+        setError("Failed to fetch Transformer Two Windings due to a network error");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchTransformers();
   }, []);
 
-  // Handle delete operation
   const handleDelete = async (id) => {
-    const response = await fetch(`/api/transformer-two-winding/${id}`, {
-      method: "DELETE",
-    });
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      setError("No token found. Please log in.");
+      return;
+    }
 
-    if (response.ok) {
-      // Remove the deleted generator from the state
-      setTransformers(transformers.filter((transformer) => transformer._id !== id));
-      setTransformersData(transformers.filter((transformer) => transformer._id !== id)); // Update generatorsData
-    } else {
-      alert("Failed to delete generator");
+    try {
+      const response = await fetch(`/api/transformer-two-winding/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        setTransformers(transformers.filter((transformer) => transformer._id !== id));
+        setTransformersData(transformersData.filter((transformer) => transformer._id !== id));
+      } else {
+        const data = await response.json();
+        setError(data.error || "Failed to delete Transformer Two Winding");
+      }
+    } catch (error) {
+      console.error("Error deleting Transformer Two Winding:", error);
+      setError("Failed to delete Transformer Two Winding due to a network error");
     }
   };
 
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
+
   return (
     <div className="font-bold text-4xl">
-      <h1 className="mb-4">Two winding transformer</h1>
+      <h1 className="mb-4">Transformer Two Winding</h1>
 
       <div className="flex items-start space-x-4 mb-6">
         <div className="relative w-[85%]">
@@ -91,15 +122,14 @@ export default function Generator() {
 
         <Link href="/transformer-two-winding/create">
           <button className="bg-[#4B66BE] text-white text-sm px-4 py-3 rounded-lg hover:bg-[#4B66BE] flex items-center justify-center space-x-2">
-            <span>Create Generator</span>
+            <span>Create Transformer Two Winding</span>
             <FaPlus />
           </button>
         </Link>
       </div>
 
-      <h1 className="text-3xl font-bold mb-6">Transformer List</h1>
+      <h1 className="text-3xl font-bold mb-6">Transformer Two Winding List</h1>
       <div className="container mx-auto my-6 px-4 border border-gray-300 shadow-xl rounded-lg">
-        {/* Options to upload and download */}
         <div className="mb-4 flex justify-between">
           <div className="space-x-4">
             <button
@@ -117,7 +147,6 @@ export default function Generator() {
           </div>
         </div>
 
-        {/* Wrapper for horizontal scrolling */}
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white shadow-md mb-5 rounded-sm table-auto border border-[#F1F5F9]">
             <thead className="bg-[#F1F5F9]">
@@ -135,50 +164,49 @@ export default function Generator() {
                   Circuit Breaker Status
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                  busFrom
+                  Bus From
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                  busSectionFrom
+                  Bus Section From
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                busTo
+                  Bus To
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                busSectionTo
+                  Bus Section To
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                  mva
+                  MVA
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                  kvprimary
+                  kV Primary
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                  kvsecondary
+                  kV Secondary
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                  r
-                </th>
-                {/* New columns added */}
-                <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                  x
+                  R
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                TapPrimary
+                  X
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                TapSecondary
+                  Tap Primary
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                primaryWindingConnectio
+                  Tap Secondary
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                primaryConnectionGrounding
+                  Primary Winding Connection
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                secondaryWindingConnection
+                  Primary Connection Grounding
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                secondaryConnectionGrounding
+                  Secondary Winding Connection
+                </th>
+                <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
+                  Secondary Connection Grounding
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
                   Angle
@@ -193,86 +221,85 @@ export default function Generator() {
               {transformersData.length === 0 ? (
                 <tr>
                   <td
-                    colSpan="8"
+                    colSpan="21"
                     className="text-center py-4 font-normal text-sm"
                   >
-                    No Transformer available
+                    No Transformer Two Windings available
                   </td>
                 </tr>
               ) : (
-                transformersData.map((generator, index) => (
-                  <tr key={index} className="border-b">
+                transformersData.map((transformer, index) => (
+                  <tr key={transformer._id || index} className="border-b">
                     <td className="py-2 px-6 border-r">
-                      <input type="checkbox" value={generator._id} />
+                      <input type="checkbox" value={transformer._id} />
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator._id}
+                      {transformer._id || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.location}
+                      {transformer.location || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.circuitBreakerStatus}
+                      {transformer.circuitBreakerStatus || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.busFrom}
+                      {transformer.busFrom || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.busSectionFrom}
+                      {transformer.busSectionFrom || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.busTo}
+                      {transformer.busTo || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.busSectionTo}
+                      {transformer.busSectionTo || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.mva}
+                      {transformer.mva || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.kvprimary}
-                    </td>
-                    {/* New fields added after "KV" */}
-                    <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.kvsecondary}
+                      {transformer.kvprimary || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.r}
+                      {transformer.kvsecondary || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.x}
+                      {transformer.r || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.TapPrimary}
+                      {transformer.x || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.TapSecondary}
+                      {transformer.TapPrimary || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.primaryWindingConnection}
+                      {transformer.TapSecondary || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.primaryConnectionGrounding}
+                      {transformer.primaryWindingConnection || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.secondaryWindingConnection}
+                      {transformer.primaryConnectionGrounding || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.secondaryConnectionGrounding}
+                      {transformer.secondaryWindingConnection || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.angle}
+                      {transformer.secondaryConnectionGrounding || "N/A"}
+                    </td>
+                    <td className="py-3 px-6 text-sm font-normal border-r">
+                      {transformer.angle || "N/A"}
                     </td>
                     <td className="py-3 px-6">
                       <div className="flex space-x-4">
                         <Link
-                          href={`/generator/${generator._id}`}
+                          href={`/transformer-two-winding/${transformer._id}`}
                           className="text-blue-500 hover:text-blue-700 text-sm font-normal"
                         >
                           Edit
                         </Link>
                         <button
-                          onClick={() => handleDelete(generator._id)}
+                          onClick={() => handleDelete(transformer._id)}
                           className="text-red-500 hover:text-red-700 text-sm font-normal"
                         >
                           Delete

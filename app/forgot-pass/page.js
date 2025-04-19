@@ -22,31 +22,31 @@ export default function ForgotPass() {
       {/* Landing Section with background image */}
       <div className="landing relative bg-cover bg-center bg-no-repeat h-screen">
         {/* Background Overlay */}
-        <div className="absolute inset-0 bg-[#434867CC] bg-opacity-50"></div>
+        <div className="absolute inset-0 bg-[#434867CC] bg-opacity-85"></div>
 
         {/* Navbar - fixed on top */}
-        <div className="nav-bar flex items-center justify-between p-4 z-1 absolute top-0 left-0 right-0">
+        <div className="nav-bar flex items-center justify-between p-4 z-1 absolute top-0 left-0 right-0 z-20">
           <div className="logo">
             <img src="/logo (1).png" alt="Logo" className="h-16" />
           </div>
           <nav className="flex space-x-8">
-            <h6 className="text-white text-base font-bold cursor-pointer">
-              <Link
+            <h6 className="text-white text-base font-bold cursor-pointer hover:underline">
+              <a
                 href="https://drive.google.com/file/d/1pEiNQ9-XFeCBnL-c7BAYGX6i3oIgrqMJ/view"
                 target="_blank"
                 rel="noopener noreferrer relative z-10"
               >
                 User's Manual
-              </Link>
+              </a>
             </h6>
             <h6 className="text-white text-base font-bold hover:underline cursor-pointer">
-              <Link
+              <a
                 href="https://voltvault-docs.vercel.app/"
                 target="_blank"
                 rel="noopener noreferrer relative z-10"
               >
                 Developer's Documentation
-              </Link>
+              </a>
             </h6>
           </nav>
         </div>

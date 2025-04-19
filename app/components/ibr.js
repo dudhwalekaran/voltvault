@@ -12,11 +12,25 @@ export default function IbrForm({ id }) {
   useEffect(() => {
     const fetchIbr = async () => {
       try {
-        const response = await fetch(`/api/ibr/${id}`);
-        if (!response.ok) throw new Error("Failed to fetch Series data");
+        const token = localStorage.getItem("authToken");
+        if (!token) {
+          setError("Please log in to fetch IBR data");
+          return;
+        }
+
+        const response = await fetch(`/api/ibr/${id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`, // Include the token for GET request
+          },
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to fetch IBR data");
+        }
         const data = await response.json();
         setIbr(data.ibr?.ibr || ""); // Ensure correct object structure
       } catch (error) {
+        console.error("Error fetching IBR:", error.message);
         setError(error.message);
       }
     };
@@ -26,17 +40,31 @@ export default function IbrForm({ id }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError(null); // Reset error state
 
     try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("Please log in to update IBR");
+      }
+
       const response = await fetch(`/api/ibr/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Include the token for PUT request
+        },
         body: JSON.stringify({ ibr }),
       });
 
-      if (!response.ok) throw new Error("Failed to update Ibr");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update IBR");
+      }
+
       router.push("/ibr"); // Redirect after successful update
     } catch (error) {
+      console.error("Error updating IBR:", error.message);
       setError(error.message);
     } finally {
       setLoading(false);
@@ -51,7 +79,9 @@ export default function IbrForm({ id }) {
       {error && <p className="text-red-500">{error}</p>}
       <form className="grid grid-cols-2 gap-4 mt-6" onSubmit={handleSubmit}>
         <div className="flex flex-col">
-          <label htmlFor="vscName" className="text-base font-normal mb-2">Ibr Name</label>
+          <label htmlFor="vscName" className="text-base font-normal mb-2">
+            Ibr Name
+          </label>
           <input
             type="text"
             id="vscName"

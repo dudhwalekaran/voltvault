@@ -15,16 +15,10 @@ export default function BusCreate() {
     setLoading(true);
 
     // Validate that all required fields are filled
-    if (
-      !location ||
-      !mvar ||
-      !compensation
-    ) {
+    if (!location || !mvar || !compensation) {
       setError("All fields are required.");
       return;
     }
-
-    setLoading(true);
 
     try {
       const capacitorData = {
@@ -34,10 +28,16 @@ export default function BusCreate() {
       };
       console.log("Sending data to API:", capacitorData);
 
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No token found. Please log in.");
+      }
+
       const response = await fetch("/api/series-capacitor", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(capacitorData),
       });
@@ -46,16 +46,16 @@ export default function BusCreate() {
       console.log("API Response:", data);
 
       if (response.ok) {
-        alert("Series Capacitor created successfully!");
+        alert(data.message); // Role-specific message from backend
         setLocation("");
-        setMvar(""); // Reset circuit to false
+        setMvar("");
         setCompensation("");
       } else {
         setError(data.error);
       }
     } catch (error) {
       console.error("Error during fetch:", error);
-      setError("Failed to create bus");
+      setError(error.message || "Failed to create Series Capacitor");
     } finally {
       setLoading(false);
     }

@@ -22,19 +22,32 @@ export default function EditBus() {
   useEffect(() => {
     const fetchBus = async () => {
       try {
-        const response = await fetch(`/api/bus/${id}`);
-        if (!response.ok) throw new Error("Failed to fetch bus details");
+        const token = localStorage.getItem("authToken");
+        if (!token) {
+          setError("Please log in to fetch bus details");
+          return;
+        }
+
+        const response = await fetch(`/api/bus/${id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`, // Include token for GET request
+          },
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to fetch bus details");
+        }
 
         const data = await response.json();
         setBusDetails({
-          busName: data.busName,
-          location: data.location,
-          voltagePower: data.voltagePower,
-          nominalKV: data.nominalKV,
+          busName: data.busName || "",
+          location: data.location || "",
+          voltagePower: data.voltagePower || "",
+          nominalKV: data.nominalKV || "",
         });
       } catch (error) {
         console.error(error);
-        setError("Error fetching bus details.");
+        setError(error.message || "Error fetching bus details.");
       }
     };
     fetchBus();
@@ -46,23 +59,29 @@ export default function EditBus() {
     setError("");
 
     try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("Please log in to update bus");
+      }
+
       const response = await fetch(`/api/bus/${id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Include token for PATCH request
         },
         body: JSON.stringify(busDetails),
       });
 
-      if (response.ok) {
-        router.push("/bus");
-      } else {
+      if (!response.ok) {
         const result = await response.json();
-        setError(result.message || "Failed to update bus.");
+        throw new Error(result.error || result.message || "Failed to update bus");
       }
+
+      router.push("/bus");
     } catch (error) {
-      console.error(error);
-      setError("Server error. Please try again.");
+      console.error("Error updating bus:", error);
+      setError(error.message || "Server error. Please try again.");
     } finally {
       setLoading(false);
     }

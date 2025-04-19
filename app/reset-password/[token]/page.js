@@ -49,10 +49,10 @@ export default function ResetPassword({ params }) {
       {/* Main Container with Background Image */}
       <div className="landing relative bg-cover bg-center">
         {/* Background Overlay */}
-        <div className="absolute inset-0 bg-[#434867CC] opacity-80"></div>
+        <div className="absolute inset-0 bg-[#434867CC] opacity-85"></div>
 
         {/* Navbar - Fixed on Top */}
-        <div className="flex items-center justify-between p-4 absolute top-0 left-0 right-0">
+        <div className="flex items-center justify-between p-4 absolute top-0 left-0 right-0 z-20">
           <div className="logo">
             <img src="/logo (1).png" alt="Logo" className="h-16" />
           </div>
@@ -72,6 +72,7 @@ export default function ResetPassword({ params }) {
                 href="https://voltvault-docs.vercel.app/"
                 target="_blank"
                 rel="noopener noreferrer"
+                className="cursor-pointer hover:underline"
               >
                 Developer's Documentation
               </Link>

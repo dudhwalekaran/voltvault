@@ -21,25 +21,44 @@ export default function ShuntCapacitorEdit() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchCapacitor = async () => {
-      if (!id) return;
+    const fetchShuntCapacitor = async () => {
+      if (!id) {
+        setError("No ID provided for editing");
+        setLoading(false);
+        return;
+      }
+
       try {
-        const response = await fetch(`/api/shunt-capacitor/${id}`);
-        if (!response.ok) throw new Error("Failed to fetch data");
+        const token = localStorage.getItem("authToken");
+        if (!token) {
+          throw new Error("No token found. Please log in.");
+        }
+
+        const response = await fetch(`/api/shunt-capacitor/${id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`, // Add Authorization header
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Failed to fetch data: ${response.status}`);
+        }
 
         const data = await response.json();
-        if (!data.success || !data.shunt) {
+        if (!data.success || !data.shuntCapacitor) {
           throw new Error("Shunt Capacitor not found.");
         }
 
-        setOriginalData(data.shunt);
+        setOriginalData(data.shuntCapacitor);
         setFormData({
-          location: data.shunt.location || "",
-          circuitBreaker: data.shunt.circuitBreaker || false,
-          busFrom: data.shunt.busFrom || "",
-          busSectionFrom: data.shunt.busSectionFrom || "",
-          kv: data.shunt.kv || "",
-          mva: data.shunt.mva || "",
+          location: data.shuntCapacitor.location || "",
+          circuitBreaker: data.shuntCapacitor.circuitBreaker || false,
+          busFrom: data.shuntCapacitor.busFrom || "",
+          busSectionFrom: data.shuntCapacitor.busSectionFrom || "",
+          kv: data.shuntCapacitor.kv || "",
+          mva: data.shuntCapacitor.mva || "",
         });
       } catch (error) {
         setError(error.message);
@@ -48,7 +67,7 @@ export default function ShuntCapacitorEdit() {
       }
     };
 
-    fetchCapacitor();
+    fetchShuntCapacitor();
   }, [id]);
 
   const handleChange = (e) => {
@@ -65,6 +84,11 @@ export default function ShuntCapacitorEdit() {
     setError(null);
 
     try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No token found. Please log in.");
+      }
+
       const updateData = {};
       for (const key in formData) {
         if (formData[key] !== originalData[key]) {
@@ -80,12 +104,22 @@ export default function ShuntCapacitorEdit() {
 
       const response = await fetch(`/api/shunt-capacitor/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Add Authorization header
+        },
         body: JSON.stringify(updateData),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update Shunt Capacitor.");
+      }
+
       const data = await response.json();
-      if (!data.success) throw new Error(data.message || "Failed to update.");
+      if (!data.success) {
+        throw new Error(data.message || "Failed to update Shunt Capacitor.");
+      }
 
       alert("Shunt Capacitor updated successfully!");
       router.push("/shunt-capacitor");

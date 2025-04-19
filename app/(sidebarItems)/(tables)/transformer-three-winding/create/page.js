@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation"; // Added for redirection after success
 
-export default function TransformerThreeWindingCreate() { // Renamed for clarity
+export default function TransformerThreeWindingCreate() {
+  // Renamed for clarity
   const [location, setLocation] = useState("");
   const [circuitBreakerStatus, setCircuitBreakerStatus] = useState(false); // Boolean for checkbox
   const [busprimaryFrom, setBusprimaryFrom] = useState("");
@@ -27,11 +28,14 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
   const [tapSecondary, setTapSecondary] = useState(""); // Fixed camelCase
   const [tapTertiary, setTapTertiary] = useState(""); // Fixed camelCase
   const [primaryConnection, setPrimaryConnection] = useState("");
-  const [primaryConnectionGrounding, setPrimaryConnectionGrounding] = useState("");
+  const [primaryConnectionGrounding, setPrimaryConnectionGrounding] =
+    useState("");
   const [secondaryConnection, setSecondaryConnection] = useState("");
-  const [secondaryConnectionGrounding, setSecondaryConnectionGrounding] = useState("");
+  const [secondaryConnectionGrounding, setSecondaryConnectionGrounding] =
+    useState("");
   const [tertiaryConnection, setTertiaryConnection] = useState("");
-  const [tertiaryConnectionGrounding, setTertiaryConnectionGrounding] = useState("");
+  const [tertiaryConnectionGrounding, setTertiaryConnectionGrounding] =
+    useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const router = useRouter(); // Added for navigation
@@ -41,9 +45,9 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
     setLoading(true);
     setError(null); // Clear previous errors
 
-    // Basic validation (optional fields per schema, but ensure some data is provided)
-    if (!location && !mva && !kvprimaryVoltage) {
-      setError("Please provide at least a location, MVA, or primary voltage.");
+    // Validate that at least the required fields are filled (adjust based on schema)
+    if (!location || !mva || !kvprimaryVoltage) {
+      setError("Location, MVA, and Primary Voltage are required.");
       setLoading(false);
       return;
     }
@@ -68,9 +72,9 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         ptprimarytertiaryX,
         stsecondarytertiaryR,
         stsecondarytertiaryX,
-        TapPrimary: tapPrimary, // Match schema casing
-        TapSecondary: tapSecondary, // Match schema casing
-        TapTertiary: tapTertiary, // Match schema casing
+        TapPrimary: tapPrimary,
+        TapSecondary: tapSecondary,
+        TapTertiary: tapTertiary,
         primaryConnection,
         primaryConnectionGrounding,
         secondaryConnection,
@@ -81,10 +85,16 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
 
       console.log("Sending data to API:", transformerData);
 
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No token found. Please log in.");
+      }
+
       const response = await fetch("/api/transformer-three-winding", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(transformerData),
       });
@@ -93,10 +103,12 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
       console.log("API Response:", data);
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to create transformer");
+        throw new Error(
+          data.error || "Failed to create Transformer Three Winding"
+        );
       }
 
-      alert("Transformer Three Winding created successfully!");
+      alert(data.message); // Role-specific message from backend
       // Reset form fields
       setLocation("");
       setCircuitBreakerStatus(false);
@@ -126,10 +138,9 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
       setTertiaryConnection("");
       setTertiaryConnectionGrounding("");
       router.push("/transformer-three-winding"); // Redirect after success
-
     } catch (error) {
       console.error("Error during submission:", error.message);
-      setError(error.message || "Failed to create transformer");
+      setError(error.message || "Failed to create Transformer Three Winding");
     } finally {
       setLoading(false);
     }
@@ -156,7 +167,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="circuitBreakerStatus" className="text-base font-normal mb-2">
+          <label
+            htmlFor="circuitBreakerStatus"
+            className="text-base font-normal mb-2"
+          >
             Circuit Breaker Status
           </label>
           <label className="inline-flex items-center">
@@ -173,7 +187,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="busprimaryFrom" className="text-base font-normal mb-2">
+          <label
+            htmlFor="busprimaryFrom"
+            className="text-base font-normal mb-2"
+          >
             Bus Primary From
           </label>
           <input
@@ -188,7 +205,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="busprimarySectionFrom" className="text-base font-normal mb-2">
+          <label
+            htmlFor="busprimarySectionFrom"
+            className="text-base font-normal mb-2"
+          >
             Bus Primary Section From
           </label>
           <input
@@ -203,7 +223,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="bussecondaryTo" className="text-base font-normal mb-2">
+          <label
+            htmlFor="bussecondaryTo"
+            className="text-base font-normal mb-2"
+          >
             Bus Secondary To
           </label>
           <input
@@ -218,7 +241,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="busSectionSecondaryTo" className="text-base font-normal mb-2">
+          <label
+            htmlFor="busSectionSecondaryTo"
+            className="text-base font-normal mb-2"
+          >
             Bus Section Secondary To
           </label>
           <input
@@ -248,7 +274,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="busSectionTertiaryTo" className="text-base font-normal mb-2">
+          <label
+            htmlFor="busSectionTertiaryTo"
+            className="text-base font-normal mb-2"
+          >
             Bus Section Tertiary To
           </label>
           <input
@@ -278,7 +307,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="kvprimaryVoltage" className="text-base font-normal mb-2">
+          <label
+            htmlFor="kvprimaryVoltage"
+            className="text-base font-normal mb-2"
+          >
             KV Primary Voltage
           </label>
           <input
@@ -293,7 +325,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="kvsecondaryVoltage" className="text-base font-normal mb-2">
+          <label
+            htmlFor="kvsecondaryVoltage"
+            className="text-base font-normal mb-2"
+          >
             KV Secondary Voltage
           </label>
           <input
@@ -308,7 +343,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="kvtertiaryVoltage" className="text-base font-normal mb-2">
+          <label
+            htmlFor="kvtertiaryVoltage"
+            className="text-base font-normal mb-2"
+          >
             KV Tertiary Voltage
           </label>
           <input
@@ -323,7 +361,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="psprimarysecondaryR" className="text-base font-normal mb-2">
+          <label
+            htmlFor="psprimarysecondaryR"
+            className="text-base font-normal mb-2"
+          >
             PS Primary-Secondary R
           </label>
           <input
@@ -338,7 +379,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="psprimarysecondaryX" className="text-base font-normal mb-2">
+          <label
+            htmlFor="psprimarysecondaryX"
+            className="text-base font-normal mb-2"
+          >
             PS Primary-Secondary X
           </label>
           <input
@@ -353,7 +397,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="ptprimarytertiaryR" className="text-base font-normal mb-2">
+          <label
+            htmlFor="ptprimarytertiaryR"
+            className="text-base font-normal mb-2"
+          >
             PT Primary-Tertiary R
           </label>
           <input
@@ -368,7 +415,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="ptprimarytertiaryX" className="text-base font-normal mb-2">
+          <label
+            htmlFor="ptprimarytertiaryX"
+            className="text-base font-normal mb-2"
+          >
             PT Primary-Tertiary X
           </label>
           <input
@@ -383,7 +433,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="stsecondarytertiaryR" className="text-base font-normal mb-2">
+          <label
+            htmlFor="stsecondarytertiaryR"
+            className="text-base font-normal mb-2"
+          >
             ST Secondary-Tertiary R
           </label>
           <input
@@ -398,7 +451,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="stsecondarytertiaryX" className="text-base font-normal mb-2">
+          <label
+            htmlFor="stsecondarytertiaryX"
+            className="text-base font-normal mb-2"
+          >
             ST Secondary-Tertiary X
           </label>
           <input
@@ -458,7 +514,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="primaryConnection" className="text-base font-normal mb-2">
+          <label
+            htmlFor="primaryConnection"
+            className="text-base font-normal mb-2"
+          >
             Primary Connection
           </label>
           <input
@@ -473,7 +532,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="primaryConnectionGrounding" className="text-base font-normal mb-2">
+          <label
+            htmlFor="primaryConnectionGrounding"
+            className="text-base font-normal mb-2"
+          >
             Primary Connection Grounding
           </label>
           <input
@@ -488,7 +550,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="secondaryConnection" className="text-base font-normal mb-2">
+          <label
+            htmlFor="secondaryConnection"
+            className="text-base font-normal mb-2"
+          >
             Secondary Connection
           </label>
           <input
@@ -503,7 +568,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="secondaryConnectionGrounding" className="text-base font-normal mb-2">
+          <label
+            htmlFor="secondaryConnectionGrounding"
+            className="text-base font-normal mb-2"
+          >
             Secondary Connection Grounding
           </label>
           <input
@@ -518,7 +586,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="tertiaryConnection" className="text-base font-normal mb-2">
+          <label
+            htmlFor="tertiaryConnection"
+            className="text-base font-normal mb-2"
+          >
             Tertiary Connection
           </label>
           <input
@@ -533,7 +604,10 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
         </div>
 
         <div className="flex flex-col">
-          <label htmlFor="tertiaryConnectionGrounding" className="text-base font-normal mb-2">
+          <label
+            htmlFor="tertiaryConnectionGrounding"
+            className="text-base font-normal mb-2"
+          >
             Tertiary Connection Grounding
           </label>
           <input
@@ -547,7 +621,9 @@ export default function TransformerThreeWindingCreate() { // Renamed for clarity
           />
         </div>
 
-        <div className="flex space-x-4 mt-5 col-span-2"> {/* Adjusted to span both columns */}
+        <div className="flex space-x-4 mt-5 col-span-2">
+          {" "}
+          {/* Adjusted to span both columns */}
           <button
             type="submit"
             className="bg-[#1E40AF] text-white w-56 font-medium text-base py-2 px-6 rounded-lg hover:bg-blue-600"

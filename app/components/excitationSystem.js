@@ -21,6 +21,7 @@ export default function EditExcitationSystem({ id }) {
   const [existingUelImage, setExistingUelImage] = useState(null);
   const [existingOelImage, setExistingOelImage] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
   const avrFileInputRef = useRef(null);
   const pssFileInputRef = useRef(null);
   const uelFileInputRef = useRef(null);
@@ -28,24 +29,45 @@ export default function EditExcitationSystem({ id }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Fetch the existing excitation system data
     const fetchData = async () => {
+      if (!id) {
+        setError("No ID provided for editing");
+        return;
+      }
+
       try {
-        const response = await fetch(`/api/excitation-system/${id}`);
+        const token = localStorage.getItem("authToken");
+        if (!token) {
+          throw new Error("No token found. Please log in.");
+        }
+
+        const response = await fetch(`/api/excitation-system/${id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`, // Add Authorization header
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Failed to fetch data: ${response.status}`);
+        }
+
         const data = await response.json();
         if (data.success) {
-          setLocation(data.excitation.location);
-          setAvr(data.excitation.avrType);
-          setGenerator(data.excitation.generatorDeviceName);
-          setExistingAvrImage(data.excitation.avrImageUrl);
-          setExistingPssImage(data.excitation.pssImageUrl);
-          setExistingUelImage(data.excitation.uelImageUrl);
-          setExistingOelImage(data.excitation.oelImageUrl);
+          setLocation(data.excitationSystem.location);
+          setAvr(data.excitationSystem.avrType);
+          setGenerator(data.excitationSystem.generatorDeviceName);
+          setExistingAvrImage(data.excitationSystem.avrImageUrl);
+          setExistingPssImage(data.excitationSystem.pssImageUrl);
+          setExistingUelImage(data.excitationSystem.uelImageUrl);
+          setExistingOelImage(data.excitationSystem.oelImageUrl);
         } else {
-          alert('Failed to load excitation system data');
+          setError('Failed to load excitation system data');
         }
       } catch (error) {
         console.error('Error fetching excitation system data:', error);
+        setError(error.message);
       }
     };
 
@@ -92,6 +114,7 @@ export default function EditExcitationSystem({ id }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError(null);
 
     let avrImageUrl = existingAvrImage;
     let pssImageUrl = existingPssImage;
@@ -99,6 +122,11 @@ export default function EditExcitationSystem({ id }) {
     let oelImageUrl = existingOelImage;
 
     try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No token found. Please log in.");
+      }
+
       // Upload new images to Cloudinary if they exist
       const uploadImage = async (image) => {
         const formData = new FormData();
@@ -120,7 +148,10 @@ export default function EditExcitationSystem({ id }) {
       // Update the excitation system in the database
       const response = await fetch(`/api/excitation-system/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`, // Add Authorization header
+        },
         body: JSON.stringify({ 
           location, 
           avrType: avr, 
@@ -132,14 +163,17 @@ export default function EditExcitationSystem({ id }) {
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to update excitation system');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update excitation system');
+      }
 
       alert('Excitation system updated successfully!');
       router.push('/excitation-system');
 
     } catch (error) {
       console.error('Error updating excitation system:', error);
-      alert('An error occurred, please try again');
+      setError(error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -148,6 +182,8 @@ export default function EditExcitationSystem({ id }) {
   return (
     <div className="m-2 font-bold text-3xl">
       <div className="mb-6">Edit Excitation System</div>
+
+      {error && <p className="text-red-500 mb-4">{error}</p>}
 
       <div className="grid grid-cols-2 gap-6 mb-6">
         <div>

@@ -4,25 +4,23 @@ import { useState, useEffect } from "react";
 import { FaSearch } from "react-icons/fa";
 import { FaPlus } from "react-icons/fa6";
 import Link from "next/link";
-import * as XLSX from "xlsx"; // Add this for Excel functionality
+import * as XLSX from "xlsx";
 
-export default function Generator() {
+export default function TransmissionLineList() {
   const [transmissions, setTransmissions] = useState([]);
-  const [transmissionsData, setTransmissionsData] = useState([]); // Default to an empty array
+  const [transmissionsData, setTransmissionsData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Function to download the table as an Excel file
   const downloadTableAsExcel = () => {
     const ws = XLSX.utils.json_to_sheet(transmissionsData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Generator List");
-
-    // Download the Excel file
-    XLSX.writeFile(wb, "generator_list.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Transmission Line List");
+    XLSX.writeFile(wb, "transmission_line_list.xlsx");
   };
 
-  // Function to handle file upload and parse Excel data
   const handleFileUpload = (e) => {
-    const file = e.target.files[0];
+    const file =e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
@@ -31,51 +29,84 @@ export default function Generator() {
       const wb = XLSX.read(binaryStr, { type: "binary" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(ws);
-
-      // Set the data to the state to render in the table
-      setTransmissionsData(data);
+      setTransmissionsData(data || []);
     };
     reader.readAsBinaryString(file);
   };
 
   useEffect(() => {
     const fetchTransmissions = async () => {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        setError("No token found. Please log in.");
+        setLoading(false);
+        return;
+      }
+
       try {
-        const response = await fetch("/api/transmission-line");
+        const response = await fetch("/api/transmission-line", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
         const data = await response.json();
+        console.log("API Response:", data);
 
         if (response.ok) {
-          setTransmissions(data.transmissionLines || []); // Ensure the data is an array
-          setTransmissionsData(data.transmissionLines || []); // Ensure the data is an array for table display
+          setTransmissions(data.transmissionLines || []);
+          setTransmissionsData(data.transmissionLines || []);
         } else {
-          console.error("Failed to fetch generators:", data.error); // Log error if response is not ok
+          setError(data.error || "Failed to fetch Transmission Lines");
         }
       } catch (error) {
-        console.error("Error fetching generators:", error); // Log error in case of network issues
+        console.error("Error fetching Transmission Lines:", error);
+        setError("Failed to fetch Transmission Lines due to a network error");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchTransmissions();
   }, []);
 
-  // Handle delete operation
   const handleDelete = async (id) => {
-    const response = await fetch(`/api/transmission-line/${id}`, {
-      method: "DELETE",
-    });
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      setError("No token found. Please log in.");
+      return;
+    }
 
-    if (response.ok) {
-      // Remove the deleted generator from the state
-      setTransmissions(transmissions.filter((transmission) => transmission._id !== id));
-      setTransmissionsData(transmissions.filter((transmission) => transmission._id !== id)); // Update generatorsData
-    } else {
-      alert("Failed to delete generator");
+    try {
+      const response = await fetch(`/api/transmission-line/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        setTransmissions(transmissions.filter((transmission) => transmission._id !== id));
+        setTransmissionsData(transmissionsData.filter((transmission) => transmission._id !== id));
+      } else {
+        const data = await response.json();
+        setError(data.error || "Failed to delete Transmission Line");
+      }
+    } catch (error) {
+      console.error("Error deleting Transmission Line:", error);
+      setError("Failed to delete Transmission Line due to a network error");
     }
   };
 
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
+
   return (
     <div className="font-bold text-4xl">
-      <h1 className="mb-4">Transmission line</h1>
+      <h1 className="mb-4">Transmission Line</h1>
 
       <div className="flex items-start space-x-4 mb-6">
         <div className="relative w-[85%]">
@@ -91,7 +122,7 @@ export default function Generator() {
 
         <Link href="/transmission-line/create">
           <button className="bg-[#4B66BE] text-white text-sm px-4 py-3 rounded-lg hover:bg-[#4B66BE] flex items-center justify-center space-x-2">
-            <span>Create transmission line</span>
+            <span>Create Transmission Line</span>
             <FaPlus />
           </button>
         </Link>
@@ -99,7 +130,6 @@ export default function Generator() {
 
       <h1 className="text-3xl font-bold mb-6">Transmission Line List</h1>
       <div className="container mx-auto my-6 px-4 border border-gray-300 shadow-xl rounded-lg">
-        {/* Options to upload and download */}
         <div className="mb-4 flex justify-between">
           <div className="space-x-4">
             <button
@@ -117,7 +147,6 @@ export default function Generator() {
           </div>
         </div>
 
-        {/* Wrapper for horizontal scrolling */}
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white shadow-md mb-5 rounded-sm table-auto border border-[#F1F5F9]">
             <thead className="bg-[#F1F5F9]">
@@ -126,10 +155,10 @@ export default function Generator() {
                   Select
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                  transmission ID
+                  Transmission Line ID
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                  Location1
+                  Location 1
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
                   Location 2
@@ -153,7 +182,7 @@ export default function Generator() {
                   Bus Section To
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                  KV
+                  kV
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
                   Positive Sequence R (ohms/unit length)
@@ -192,85 +221,85 @@ export default function Generator() {
               {transmissionsData.length === 0 ? (
                 <tr>
                   <td
-                    colSpan="8"
+                    colSpan="21"
                     className="text-center py-4 font-normal text-sm"
                   >
-                    No transmission available
+                    No Transmission Lines available
                   </td>
                 </tr>
               ) : (
-                transmissionsData.map((generator, index) => (
-                  <tr key={index} className="border-b">
+                transmissionsData.map((transmission, index) => (
+                  <tr key={transmission._id || index} className="border-b">
                     <td className="py-2 px-6 border-r">
-                      <input type="checkbox" value={generator._id} />
+                      <input type="checkbox" value={transmission._id} />
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator._id}
+                      {transmission._id || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.location1}
+                      {transmission.location1 || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.location2}
+                      {transmission.location2 || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.type}
+                      {transmission.type || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.circuitBreakerStatus}
+                      {transmission.circuitBreakerStatus || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.busFrom}
+                      {transmission.busFrom || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.busSectionFrom}
+                      {transmission.busSectionFrom || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.busTo}
+                      {transmission.busTo || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.busSectionTo}
+                      {transmission.busSectionTo || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.kv}
+                      {transmission.kv || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.positiveSequenceRohmsperunitlength}
+                      {transmission.positiveSequenceRohmsperunitlength || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.positiveSequenceXohmsperunitlength}
+                      {transmission.positiveSequenceXohmsperunitlength || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.positiveSequenceBseimensperunitlength}
+                      {transmission.positiveSequenceBseimensperunitlength || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.negativeSequenceRohmsperunitlength}
+                      {transmission.negativeSequenceRohmsperunitlength || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.negativeSequenceXohmsperunitlength}
+                      {transmission.negativeSequenceXohmsperunitlength || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.negativeSequenceBseimensperunitlength}
+                      {transmission.negativeSequenceBseimensperunitlength || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.lengthKm}
+                      {transmission.lengthKm || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.lineReactorFrom}
+                      {transmission.lineReactorFrom || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {generator.lineReactorTo}
+                      {transmission.lineReactorTo || "N/A"}
                     </td>
                     <td className="py-3 px-6">
                       <div className="flex space-x-4">
                         <Link
-                          href={`/transmission-line/${generator._id}`}
+                          href={`/transmission-line/${transmission._id}`}
                           className="text-blue-500 hover:text-blue-700 text-sm font-normal"
                         >
                           Edit
                         </Link>
                         <button
-                          onClick={() => handleDelete(generator._id)}
+                          onClick={() => handleDelete(transmission._id)}
                           className="text-red-500 hover:text-red-700 text-sm font-normal"
                         >
                           Delete

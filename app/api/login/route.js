@@ -20,11 +20,15 @@ export async function POST(req) {
       return new Response(JSON.stringify({ message: "Email not found" }), { status: 401 });
     }
 
-    console.log("Comparing password - Input:", password, "Stored hash:", user.password);
+    console.log("Stored hash in AcceptedUser:", user.password);
+    console.log("Input password:", password);
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     console.log("Password comparison result:", isPasswordValid);
 
     if (!isPasswordValid) {
+      const inputHash = await bcrypt.hash(password, 10); // Use the same salt rounds as in the request route
+      console.log("Hashed input password for comparison:", inputHash);
       return new Response(JSON.stringify({ message: "Incorrect password" }), { status: 401 });
     }
 

@@ -11,7 +11,7 @@ export default function RootLayout({ children }) {
     '/bus', '/excitation-system', '/generator', '/ibr', '/lcc-hvdc-link', '/load', '/series-capacitor',
     '/series-fact', '/shunt-capacitor', '/shunt-fact', '/shunt-reactor', '/single-line-diagram',
     '/transformer-three-winding', '/transformer-two-winding', '/transmission-line', '/turbine-governor',
-    '/vsc-hvdc-link'
+    '/vsc-hvdc-link', '/profile', 
   ]; // Add more paths as necessary
 
   // Check if the current path should have the sidebar

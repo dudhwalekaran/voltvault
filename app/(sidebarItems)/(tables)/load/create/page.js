@@ -29,8 +29,6 @@ export default function BusCreate() {
       return;
     }
 
-    setLoading(true);
-
     try {
       const loadData = {
         location,
@@ -42,10 +40,16 @@ export default function BusCreate() {
       };
       console.log("Sending data to API:", loadData);
 
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No token found. Please log in.");
+      }
+
       const response = await fetch("/api/load", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(loadData),
       });
@@ -54,7 +58,7 @@ export default function BusCreate() {
       console.log("API Response:", data);
 
       if (response.ok) {
-        alert("Load created successfully!");
+        alert(data.message); // Role-specific message from backend
         setLocation("");
         setCircuitBreaker(false); // Reset circuit to false
         setBusFrom("");
@@ -66,7 +70,7 @@ export default function BusCreate() {
       }
     } catch (error) {
       console.error("Error during fetch:", error);
-      setError("Failed to create bus");
+      setError(error.message || "Failed to create Load");
     } finally {
       setLoading(false);
     }

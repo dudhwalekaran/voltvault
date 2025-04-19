@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import connect from "@/lib/db"; // MongoDB connection helper
 import Bus from "@/models/Bus"; // Bus mongoose model
 import PendingRequest from "@/models/PendingRequest"; // Pending request model
+import History from "@/models/History"; // History model for logging actions
 import jwt from "jsonwebtoken";
 
 export async function POST(req) {
@@ -35,6 +36,19 @@ export async function POST(req) {
     if (role === "admin") {
       const newBus = new Bus({ busName, location, voltagePower, nominalKV });
       await newBus.save();
+
+      // Log the action to History
+      const history = new History({
+        action: "create",
+        dataType: "Bus",
+        recordId: newBus._id.toString(),
+        adminEmail: decoded.email,
+        adminName: decoded.name,
+        details: `Created Bus: ${JSON.stringify({ busName, location, voltagePower, nominalKV })}`,
+      });
+      await history.save();
+      console.log("History entry created:", history);
+
       return NextResponse.json({ message: "Bus created successfully", bus: newBus }, { status: 201 });
     } else if (role === "user") {
       const pendingRequest = new PendingRequest({
@@ -61,9 +75,9 @@ export async function GET(req) {
   try {
     await connect();
     const buses = await Bus.find();
-    if (!buses || buses.length === 0) {
+    /** if (!buses || buses.length === 0) {
       return NextResponse.json({ error: "No buses found" }, { status: 404 });
-    }
+    } **/
     return NextResponse.json({ buses }, { status: 200 });
   } catch (error) {
     console.error("Error fetching buses:", error.message);

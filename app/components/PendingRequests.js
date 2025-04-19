@@ -5,15 +5,13 @@ import { useEffect, useState } from "react";
 export default function RequestsPage() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
-  const [isAdmin, setIsAdmin] = useState(false); // Track user role
+  const [isAdmin, setIsAdmin] = useState(false);
   const itemsPerPage = 5;
 
   useEffect(() => {
-    // Check user role from localStorage
     const user = JSON.parse(localStorage.getItem("user"));
     if (user && user.status === "admin") {
       setIsAdmin(true);
@@ -25,7 +23,10 @@ export default function RequestsPage() {
     try {
       setLoading(true);
       const token = localStorage.getItem("authToken");
-      if (!token) throw new Error("Please log in to view requests");
+      if (!token) {
+        alert("Please log in to view requests");
+        return;
+      }
 
       const response = await fetch("/api/pending-requests", {
         headers: { Authorization: `Bearer ${token}` },
@@ -33,17 +34,19 @@ export default function RequestsPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch requests");
+        alert(data.error || "Failed to fetch requests");
+        return;
       }
 
       if (!Array.isArray(data.pendingRequests)) {
-        throw new Error("Invalid response format from API");
+        alert("Invalid response format from API");
+        return;
       }
 
       setRequests(data.pendingRequests);
     } catch (err) {
       console.error("Error fetching requests:", err);
-      setError(err.message);
+      alert(err.message);
     } finally {
       setLoading(false);
     }
@@ -52,7 +55,10 @@ export default function RequestsPage() {
   async function updateRequestStatus(id, newStatus) {
     try {
       const token = localStorage.getItem("authToken");
-      if (!token) throw new Error("Please log in to perform this action");
+      if (!token) {
+        alert("Please log in to perform this action");
+        return;
+      }
 
       const response = await fetch(`/api/update-request/${id}`, {
         method: "PATCH",
@@ -63,14 +69,47 @@ export default function RequestsPage() {
         body: JSON.stringify({ status: newStatus }),
       });
 
+      const data = await response.json();
       if (!response.ok) {
-        throw new Error("Failed to update request");
+        alert(data.error || "Failed to update request");
+        return;
       }
 
+      alert(`Request ${newStatus} successfully!`);
       await fetchRequests();
     } catch (error) {
       console.error("Error updating request status:", error);
-      setError(error.message);
+      alert(error.message);
+    }
+  }
+
+  async function deleteRequest(id) {
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        alert("Please log in to perform this action");
+        return;
+      }
+
+      const response = await fetch(`/api/update-request/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data.error || "Failed to delete request");
+        return;
+      }
+
+      alert("Request deleted successfully!");
+      await fetchRequests();
+    } catch (error) {
+      console.error("Error deleting request:", error);
+      alert(error.message);
     }
   }
 
@@ -87,8 +126,14 @@ export default function RequestsPage() {
     currentPage * itemsPerPage
   );
 
+  const getInitials = (name) => {
+    const words = name.split(" ");
+    return words.length > 1
+      ? `${words[0][0]}${words[1][0]}`
+      : name.slice(0, 2).toUpperCase();
+  };
+
   if (loading) return <p className="text-center text-gray-600">Loading...</p>;
-  if (error) return <p className="text-center text-red-500">Error: {error}</p>;
 
   return (
     <div className="max-w-6xl mx-2">
@@ -123,17 +168,24 @@ export default function RequestsPage() {
           {paginatedRequests.map((req) => (
             <div
               key={req._id}
-              className="p-4 border rounded-lg shadow-md flex justify-between items-center"
+              className="p-4 border rounded-lg shadow-md flex items-center justify-between"
             >
-              <div>
-                <p className="text-lg font-semibold">{req.username}</p>
-                <p className="text-sm text-gray-500">{req.email}</p>
-                <p className="text-gray-600 mt-2">{req.description}</p>
-                <p className="text-xs text-gray-400 mt-1">
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">
+                  {getInitials(req.username)}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2">
+                    <p className="text-lg font-semibold">{req.username}</p>
+                    <p className="text-sm text-gray-500">{req.email}</p>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">{req.description}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <p className="text-sm text-gray-400">
                   {new Date(req.createdAt).toLocaleString()}
                 </p>
-              </div>
-              <div className="flex items-center space-x-2">
                 <span
                   className={`px-3 py-1 rounded-full text-white text-sm ${
                     req.status === "pending"
@@ -149,20 +201,31 @@ export default function RequestsPage() {
                   <>
                     <button
                       onClick={() => updateRequestStatus(req._id, "approved")}
-                      className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
                     >
                       ✅
                     </button>
                     <button
                       onClick={() => updateRequestStatus(req._id, "rejected")}
-                      className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
                     >
                       ❌
+                    </button>
+                    <button
+                      onClick={() => deleteRequest(req._id)}>
+                      🗑️
                     </button>
                   </>
                 ) : req.status === "pending" ? (
                   <span className="text-gray-500">Awaiting admin review</span>
-                ) : null}
+                ) : (
+                  isAdmin && (
+                    <button
+                      onClick={() => deleteRequest(req._id)}
+                      className="p-2 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+                    >
+                      🗑️
+                    </button>
+                  )
+                )}
               </div>
             </div>
           ))}

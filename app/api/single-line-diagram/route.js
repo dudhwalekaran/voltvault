@@ -1,46 +1,174 @@
-import connectDB from "@/lib/db"; // MongoDB connection utility
-import SingleLineDiagram from "@/models/SingleLineDiagram"; // Import the schema
+import { NextResponse } from "next/server";
+import connectDB from "@/lib/db";
+import SingleLineDiagram from "@/models/SingleLineDiagram";
+import History from "@/models/History";
+import jwt from "jsonwebtoken";
 
-// POST handler to save data
 export async function POST(req) {
-  const { description, imageUrl } = await req.json();
-
-  // Connect to the database
+  console.log("=== POST /api/single-line-diagram Started ===");
   try {
-    await connectDB();
+    // Validate JWT_SECRET
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET missing!");
+      return NextResponse.json(
+        { error: "Server configuration error: JWT_SECRET not set" },
+        { status: 500 }
+      );
+    }
 
-    // Create a new diagram entry
-    const newDiagram = new SingleLineDiagram({
+    // Authenticate
+    const authHeader = req.headers.get("authorization");
+    console.log("Auth Header:", authHeader);
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      console.log("No valid token");
+      return NextResponse.json({ error: "Unauthorized: Missing or invalid token" }, { status: 401 });
+    }
+
+    const token = authHeader.split(" ")[1];
+    console.log("Token:", token);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log("Decoded Token:", decoded);
+    } catch (error) {
+      console.error("JWT Verify Failed:", error.message);
+      return NextResponse.json({ error: "Invalid token", details: error.message }, { status: 401 });
+    }
+
+    // Parse body
+    let body;
+    try {
+      body = await req.json();
+      console.log("Received Data:", body);
+    } catch (error) {
+      console.error("Body Parse Failed:", error.message);
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
+
+    const { description, imageUrl } = body;
+    if (!description || !imageUrl) {
+      console.log("Missing required fields");
+      return NextResponse.json(
+        { error: "Missing required fields: description and imageUrl are required" },
+        { status: 400 }
+      );
+    }
+
+    // Connect DB
+    await connectDB();
+    console.log("DB Connected");
+
+    // Direct save
+    const singleLineDiagram = new SingleLineDiagram({
       description,
       imageUrl,
+      status: decoded.status === "admin" ? "approved" : "pending",
+      createdBy: decoded.userId,
     });
+    const savedDiagram = await singleLineDiagram.save();
+    console.log("Single Line Diagram Saved:", savedDiagram);
 
-    // Save the diagram to MongoDB
-    const result = await newDiagram.save();
+    // Log history for admins
+    if (decoded.status === "admin") {
+      console.log("User is admin, logging history...");
+      const history = new History({
+        action: "create",
+        dataType: "SingleLineDiagram",
+        recordId: savedDiagram._id.toString(),
+        adminEmail: decoded.email || decoded.userId || "Unknown",
+        adminName: decoded.username || decoded.name || "Unknown",
+        details: `Created Single Line Diagram: ${JSON.stringify({ description, imageUrl })}`,
+      });
+      await history.save();
+      console.log("History entry created:", history);
+    } else {
+      console.log("User is not admin, skipping history log");
+    }
 
-    return new Response(JSON.stringify({ message: "Diagram saved successfully", result }), {
-      status: 200,
-    });
+    // Return with 200
+    const response = {
+      success: true,
+      message: "Single Line Diagram created successfully",
+      singleLineDiagram: savedDiagram,
+    };
+    console.log("Sending Response:", response);
+    return NextResponse.json(response, { status: 200 });
+
   } catch (error) {
-    console.error("Error saving to database:", error);
-    return new Response(JSON.stringify({ error: "Failed to save diagram" }), { status: 500 });
+    console.error("=== POST /api/single-line-diagram Failed ===", error.message, error.stack);
+    return NextResponse.json(
+      { error: "Failed to create Single Line Diagram", details: error.message },
+      { status: 500 }
+    );
   }
 }
 
-// GET handler to fetch saved data
 export async function GET(req) {
+  console.log("=== GET /api/single-line-diagram Started ===");
   try {
-    await connectDB();  // Connect to the database
+    const authHeader = req.headers.get("authorization");
+    console.log("Auth Header:", authHeader);
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      console.log("No valid token");
+      return NextResponse.json({ error: "Unauthorized: Missing or invalid token" }, { status: 401 });
+    }
 
-    // Fetch all diagrams from MongoDB
-    const diagrams = await SingleLineDiagram.find({});
+    const token = authHeader.split(" ")[1];
+    console.log("Token:", token);
+    let decoded;
+    try {
+      if (!process.env.JWT_SECRET) {
+        console.error("JWT_SECRET missing!");
+        throw new Error("JWT_SECRET not set");
+      }
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log("Decoded Token:", decoded);
+    } catch (error) {
+      console.error("JWT Verify Failed:", error.message);
+      return NextResponse.json({ error: "Invalid token", details: error.message }, { status: 401 });
+    }
 
-    // Return fetched data as a JSON response
-    return new Response(JSON.stringify({ diagrams }), {
-      status: 200,
-    });
+    await connectDB();
+    console.log("DB Connected");
+
+    const url = new URL(req.url);
+    const page = parseInt(url.searchParams.get("page")) || 1;
+    const limit = parseInt(url.searchParams.get("limit")) || 10;
+    const skip = (page - 1) * limit;
+    const status = url.searchParams.get("status");
+
+    let query = {};
+    if (decoded.status !== "admin") {
+      query = { $or: [{ createdBy: decoded.userId }, { status: "approved" }] };
+    }
+    if (status) query.status = status;
+
+    const diagrams = await SingleLineDiagram.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+    const total = await SingleLineDiagram.countDocuments(query);
+
+    console.log(`Single Line Diagrams Fetched: ${diagrams.length} (Page ${page}, Total ${total})`);
+    return NextResponse.json(
+      {
+        success: true,
+        message: diagrams.length === 0 ? "No Single Line Diagrams found" : undefined,
+        diagrams: diagrams || [],
+        pagination: {
+          currentPage: page,
+          totalPages: Math.ceil(total / limit),
+          totalItems: total,
+          itemsPerPage: limit,
+        },
+      },
+      { status: 200 }
+    );
   } catch (error) {
-    console.error("Error fetching diagrams:", error);
-    return new Response(JSON.stringify({ error: "Failed to fetch diagrams" }), { status: 500 });
+    console.error("=== GET /api/single-line-diagram Failed ===", error.message, error.stack);
+    return NextResponse.json(
+      { error: "Failed to fetch Single Line Diagrams", details: error.message },
+      { status: 500 }
+    );
   }
 }

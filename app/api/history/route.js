@@ -1,26 +1,30 @@
 import { NextResponse } from "next/server";
-import connectionToDatabase from "@/lib/db";
+import connect from "@/lib/db";
 import History from "@/models/History";
+import jwt from "jsonwebtoken";
 
-export async function GET() {
-  await connectionToDatabase();
+export async function GET(req) {
   try {
-    const history = await History.find().sort({ timestamp: -1 });
-    return NextResponse.json(history, { status: 200 });
-  } catch (error) {
-    return NextResponse.json({ message: "Server error", error }, { status: 500 });
-  }
-}
+    await connect();
 
-export async function POST(req) {
-  await connectionToDatabase();
-  try {
-    const body = await req.json(); // Parse request body
-    const { user_name, user_email, affected_section, affected_id, action } = body;
-    const newHistory = new History({ user_name, user_email, affected_section, affected_id, action });
-    await newHistory.save();
-    return NextResponse.json(newHistory, { status: 201 });
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Unauthorized: No token provided" }, { status: 401 });
+    }
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.status !== "admin") {
+      return NextResponse.json({ error: "Unauthorized: Admins only" }, { status: 403 });
+    }
+
+    const history = await History.find().sort({ timestamp: -1 }); // Sort by timestamp, newest first
+
+    return NextResponse.json({ history }, { status: 200 });
   } catch (error) {
-    return NextResponse.json({ message: "Error saving history", error }, { status: 500 });
+    console.error("Error fetching history:", error.message);
+    return NextResponse.json(
+      { error: "Failed to fetch history", details: error.message },
+      { status: 500 }
+    );
   }
 }

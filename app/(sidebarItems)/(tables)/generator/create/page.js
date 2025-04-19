@@ -57,7 +57,7 @@ export default function GeneratorCreate() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
+  
     try {
       const generatorData = {
         location,
@@ -86,23 +86,28 @@ export default function GeneratorCreate() {
         speed,
         frequency,
       };
-
-      console.log("Sending data to API:", generatorData); // Log data being sent
-
+  
+      console.log("Sending data to API:", generatorData);
+  
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No token found. Please log in.");
+      }
+  
       const response = await fetch("/api/generator", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json", // Ensure content-type is set to JSON
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(generatorData), // Send data as JSON string
+        body: JSON.stringify(generatorData),
       });
-
-      const data = await response.json(); // Parse the response as JSON
-      console.log("API Response:", data); // Log the response data
-
+  
+      const data = await response.json();
+      console.log("API Response:", data);
+  
       if (response.ok) {
-        alert("Generator created successfully!");
-        // Optionally reset form fields
+        alert(data.message); // Role-specific message from backend
         setLocation("");
         setCircuitBreakerStatus(false);
         setBusTo("");
@@ -129,13 +134,13 @@ export default function GeneratorCreate() {
         setSpeed("");
         setFrequency("");
       } else {
-        setError(data.error); // Handle any error response
+        setError(data.error || "Failed to create Generator");
       }
     } catch (error) {
-      console.error("Error during fetch:", error); // Log any fetch errors
-      setError("Failed to create generator");
+      console.error("Error during fetch:", error);
+      setError(error.message || "Failed to create Generator");
     } finally {
-      setLoading(false); // Stop loading state
+      setLoading(false);
     }
   };
 

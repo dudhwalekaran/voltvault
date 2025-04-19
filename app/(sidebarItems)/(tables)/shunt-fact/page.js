@@ -1,26 +1,26 @@
-'use client';
+"use client";
 
 import { useState, useEffect } from "react";
 import { FaSearch } from "react-icons/fa";
 import { FaPlus } from "react-icons/fa6";
-import Link from 'next/link'
-import * as XLSX from "xlsx"; //
+import Link from "next/link";
+import * as XLSX from "xlsx";
 
 export default function Loads() {
   const [shunts, setShunts] = useState([]);
-  const [shuntData, setShuntData] = useState(shunts);
+  const [shuntData, setShuntData] = useState([]);
+  const [filteredShunts, setFilteredShunts] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Function to download the table as an Excel file
   const downloadTableAsExcel = () => {
     const ws = XLSX.utils.json_to_sheet(shuntData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Ibr List");
-
-    // Download the Excel file
-    XLSX.writeFile(wb, "load_list.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Shunt Fact List");
+    XLSX.writeFile(wb, "shunt_fact_list.xlsx");
   };
 
-  // Function to handle file upload and parse Excel data
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -31,50 +31,94 @@ export default function Loads() {
       const wb = XLSX.read(binaryStr, { type: "binary" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(ws);
-
-      // Set the data to the state to render in the table
       setShuntData(data);
+      setFilteredShunts(data);
     };
     reader.readAsBinaryString(file);
   };
 
   useEffect(() => {
     const fetchShunt = async () => {
-      try {
-        const response = await fetch("/api/shunt-fact");
-        const data = await response.json();
+      setLoading(true);
+      setError(null);
 
-        // Log the response data for debugging
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        setError("No token found");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/shunt-fact", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data = await response.json();
         console.log("API Response:", data);
 
         if (response.ok) {
-          setShunts(data.shunts || []); // Ensure the loades array is being set correctly
-          setShuntData(data.shunts || []); // Ensure loadesData is also updated
+          setShunts(data.shunts || []);
+          setShuntData(data.shunts || []);
+          setFilteredShunts(data.shunts || []);
         } else {
-          console.error("Failed to fetch shunts Fact:", data.error); // Log error if response is not ok
+          setError(data.error || "Failed to fetch Shunt Facts");
         }
       } catch (error) {
-        console.error("Error fetching shunts Fact:", error); // Log error in case of network issues
+        setError("Network error");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchShunt();
   }, []);
 
-  // Handle delete operation
-  const handleDelete = async (id) => {
-    const response = await fetch(`/api/shunt-fact/${id}`, {
-      method: "DELETE",
-    });
+  useEffect(() => {
+    let filtered = shuntData;
 
-    if (response.ok) {
-      // Remove the deleted load from the state
-      setShunts(shunts.filter((shunts) => shunts._id !== id));
-      setShuntData(shunts.filter((shunts) => shunts._id !== id)); // Update loadesData
-    } else {
-      alert("Failed to delete Shunts Fact");
+    if (searchQuery) {
+      filtered = filtered.filter((shunt) =>
+        (shunt.shunt || "").toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    setFilteredShunts(filtered);
+  }, [searchQuery, shuntData]);
+
+  const handleDelete = async (id) => {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      setError("No token found");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/shunt-fact/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        const updatedShunts = shunts.filter((shunt) => shunt._id !== id);
+        setShunts(updatedShunts);
+        setShuntData(updatedShunts);
+        setFilteredShunts(updatedShunts);
+      } else {
+        setError(data.message || "Failed to delete Shunt Fact");
+      }
+    } catch (error) {
+      setError("Network error");
     }
   };
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
 
   return (
     <div className="font-bold text-4xl">
@@ -87,7 +131,9 @@ export default function Loads() {
           </span>
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Search by Shunt Fact..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-[45px] pl-16 pr-4 bg-[#F2F3F5] border border-gray-300 rounded-3xl placeholder:text-base font-medium text-sm leading-[45px]"
           />
         </div>
@@ -102,7 +148,6 @@ export default function Loads() {
 
       <h1 className="text-3xl font-bold mb-6">Shunt Fact List</h1>
       <div className="container mx-auto my-6 px-4 border border-gray-300 shadow-xl rounded-lg">
-        {/* Options to upload and download */}
         <div className="mb-4 flex justify-between">
           <div className="space-x-4">
             <button
@@ -120,7 +165,6 @@ export default function Loads() {
           </div>
         </div>
 
-        {/* Wrapper for horizontal scrolling */}
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white mb-5 shadow-md rounded-sm table-auto border border-[#F1F5F9]">
             <thead className="bg-[#F1F5F9]">
@@ -132,7 +176,7 @@ export default function Loads() {
                   Shunt Fact ID
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                 Shunt Fact
+                  Shunt Fact
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal whitespace-nowrap">
                   Actions
@@ -141,15 +185,15 @@ export default function Loads() {
             </thead>
 
             <tbody>
-              {shuntData.length === 0 ? (
+              {filteredShunts.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="text-center py-4 font-normal text-sm">
+                  <td colSpan="4" className="text-center py-4 font-normal text-sm">
                     No Shunt Fact available
                   </td>
                 </tr>
               ) : (
-                shuntData.map((shunt, index) => (
-                  <tr key={index} className="border-b">
+                filteredShunts.map((shunt, index) => (
+                  <tr key={shunt._id || index} className="border-b">
                     <td className="py-2 px-6 border-r">
                       <input type="checkbox" value={shunt._id} />
                     </td>

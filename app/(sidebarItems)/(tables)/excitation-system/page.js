@@ -9,8 +9,11 @@ import * as XLSX from "xlsx";
 export default function ExcitationSystemList() {
   const [excitations, setExcitations] = useState([]);
   const [excitationsData, setExcitationsData] = useState(excitations);
+  const [filteredExcitations, setFilteredExcitations] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Function to download the table as an Excel file
   const downloadTableAsExcel = () => {
     const ws = XLSX.utils.json_to_sheet(excitationsData);
     const wb = XLSX.utils.book_new();
@@ -18,7 +21,6 @@ export default function ExcitationSystemList() {
     XLSX.writeFile(wb, "excitation_system_list.xlsx");
   };
 
-  // Function to handle file upload and parse Excel data
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -30,44 +32,93 @@ export default function ExcitationSystemList() {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(ws);
       setExcitationsData(data);
+      setFilteredExcitations(data);
     };
     reader.readAsBinaryString(file);
   };
 
   useEffect(() => {
     const fetchExcitations = async () => {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        setError("No token found. Please log in.");
+        setLoading(false);
+        return;
+      }
+
       try {
-        const response = await fetch("/api/excitation-system");
+        const response = await fetch("/api/excitation-system", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
         const data = await response.json();
 
-        if (response.ok) {
-          setExcitations(data.excitations); // Set excitation systems if fetch is successful
-          setExcitationsData(data.excitations); // Set excitationsData for table display
+        if (response.ok && data.success) {
+          setExcitations(data.excitationSystems || []); // Updated to match API response key
+          setExcitationsData(data.excitationSystems || []);
+          setFilteredExcitations(data.excitationSystems || []);
         } else {
-          console.error("Failed to fetch excitation systems:", data.error);
+          setError(data.error || "Failed to fetch Excitation Systems");
         }
       } catch (error) {
-        console.error("Error fetching excitation systems:", error);
+        console.error("Error fetching Excitation Systems:", error);
+        setError("Failed to fetch Excitation Systems due to a network error");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchExcitations();
   }, []);
 
-  // Handle delete operation
-  const handleDelete = async (id) => {
-    const response = await fetch(`/api/excitation-system/${id}`, {
-      method: "DELETE",
-    });
+  useEffect(() => {
+    let filtered = excitationsData;
 
-    if (response.ok) {
-      // Remove the deleted excitation system from the state
-      setExcitations(excitations.filter((excitation) => excitation._id !== id));
-      setExcitationsData(excitations.filter((excitation) => excitation._id !== id));
-    } else {
-      alert("Failed to delete excitation system");
+    if (searchQuery) {
+      filtered = filtered.filter((excitation) =>
+        (excitation.location || "").toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    setFilteredExcitations(filtered);
+  }, [searchQuery, excitationsData]);
+
+  const handleDelete = async (id) => {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      setError("No token found. Please log in.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/excitation-system/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const updatedExcitations = excitations.filter((excitation) => excitation._id !== id);
+        setExcitations(updatedExcitations);
+        setExcitationsData(updatedExcitations);
+        setFilteredExcitations(updatedExcitations);
+      } else {
+        setError("Failed to delete Excitation System");
+      }
+    } catch (error) {
+      console.error("Error deleting Excitation System:", error);
+      setError("Failed to delete Excitation System due to a network error");
     }
   };
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
 
   return (
     <div className="font-bold text-4xl">
@@ -80,7 +131,9 @@ export default function ExcitationSystemList() {
           </span>
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Search by location..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-[45px] pl-16 pr-4 bg-[#F2F5F5] border border-gray-300 rounded-3xl placeholder:text-base font-medium text-sm leading-[45px]"
           />
         </div>
@@ -95,7 +148,6 @@ export default function ExcitationSystemList() {
 
       <h1 className="text-3xl font-bold mb-6">Excitation System List</h1>
       <div className="container mx-auto my-6 px-4 border border-gray-300 shadow-xl rounded-lg">
-        {/* Options to upload and download */}
         <div className="mb-4 flex justify-between">
           <div className="space-x-4">
             <button
@@ -113,7 +165,6 @@ export default function ExcitationSystemList() {
           </div>
         </div>
 
-        {/* Wrapper for horizontal scrolling */}
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white shadow-md mb-5 rounded-sm table-auto border border-[#F1F5F9]">
             <thead className="bg-[#F1F5F9]">
@@ -152,7 +203,7 @@ export default function ExcitationSystemList() {
             </thead>
 
             <tbody>
-              {excitationsData.length === 0 ? (
+              {filteredExcitations.length === 0 ? (
                 <tr>
                   <td
                     colSpan="10"
@@ -162,7 +213,7 @@ export default function ExcitationSystemList() {
                   </td>
                 </tr>
               ) : (
-                excitationsData.map((excitation, index) => (
+                filteredExcitations.map((excitation, index) => (
                   <tr key={index} className="border-b">
                     <td className="py-2 px-6 border-r">
                       <input type="checkbox" value={excitation._id} />

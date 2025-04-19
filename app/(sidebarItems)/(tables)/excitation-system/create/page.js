@@ -175,11 +175,17 @@ export default function BusCreate() {
         extraImage2Url = extra2UploadResponse.secure_url;
       }
 
-      // Send data to backend
+      // Send data to backend with JWT token
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No token found. Please log in.");
+      }
+
       const response = await fetch("/api/excitation-system", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           location,
@@ -187,31 +193,34 @@ export default function BusCreate() {
           generator,
           avrImageUrl,
           pssImageUrl,
-          extraImage1Url, // Added to payload
-          extraImage2Url, // Added to payload
+          extraImage1Url,
+          extraImage2Url,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to save Excitation system");
-      }
+      const data = await response.json();
+      console.log("API Response:", data);
 
-      alert("Excitation System created successfully!");
-      setLocation("");
-      setAvr("");
-      setGenerator("");
-      setAvrImage(null);
-      setPssImage(null);
-      setExtraImage1(null);
-      setExtraImage2(null);
-      setAvrImagePreview(null);
-      setPssImagePreview(null);
-      setExtraImage1Preview(null);
-      setExtraImage2Preview(null);
-      setUploadData(avrUploadResponse);
+      if (response.ok) {
+        alert(data.message); // Role-specific message from backend
+        setLocation("");
+        setAvr("");
+        setGenerator("");
+        setAvrImage(null);
+        setPssImage(null);
+        setExtraImage1(null);
+        setExtraImage2(null);
+        setAvrImagePreview(null);
+        setPssImagePreview(null);
+        setExtraImage1Preview(null);
+        setExtraImage2Preview(null);
+        setUploadData(avrUploadResponse);
+      } else {
+        throw new Error(data.error || "Failed to create Excitation System");
+      }
     } catch (error) {
       console.error("Error:", error);
-      alert("An error occurred, please try again");
+      alert(error.message || "An error occurred, please try again");
     } finally {
       setIsSubmitting(false);
     }

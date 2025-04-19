@@ -4,23 +4,23 @@ import { useState, useEffect } from "react";
 import { FaSearch } from "react-icons/fa";
 import { FaPlus } from "react-icons/fa6";
 import Link from "next/link";
-import * as XLSX from "xlsx"; // Add this for Excel functionality
+import * as XLSX from "xlsx";
 
-export default function Bus() {
+export default function SingleLineDiagrams() {
   const [diagrams, setDiagrams] = useState([]);
   const [diagramsData, setDiagramsData] = useState(diagrams);
+  const [filteredDiagrams, setFilteredDiagrams] = useState([]); // New state for filtered diagrams
+  const [searchQuery, setSearchQuery] = useState(""); // State for search input
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Function to download the table as an Excel file
   const downloadTableAsExcel = () => {
     const ws = XLSX.utils.json_to_sheet(diagramsData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Bus List");
-
-    // Download the Excel file
-    XLSX.writeFile(wb, "bus_list.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Single Line Diagram List");
+    XLSX.writeFile(wb, "single_line_diagram_list.xlsx");
   };
 
-  // Function to handle file upload and parse Excel data
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -31,51 +31,101 @@ export default function Bus() {
       const wb = XLSX.read(binaryStr, { type: "binary" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(ws);
-
-      // Set the data to the state to render in the table
       setDiagramsData(data);
+      setFilteredDiagrams(data); // Update filteredDiagrams when new data is uploaded
     };
     reader.readAsBinaryString(file);
   };
 
   useEffect(() => {
     const fetchDiagrams = async () => {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        setError("No token found. Please log in.");
+        setLoading(false);
+        return;
+      }
+
       try {
-        const response = await fetch("/api/single-line-diagram");
+        const response = await fetch("/api/single-line-diagram", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
         const data = await response.json();
+        console.log("API Response:", data);
 
         if (response.ok) {
-          setDiagrams(data.diagrams); // Set buses if fetch is successful
-          setDiagramsData(data.diagrams); // Set busesData for table display
+          setDiagrams(data.diagrams || []);
+          setDiagramsData(data.diagrams || []);
+          setFilteredDiagrams(data.diagrams || []); // Initialize filteredDiagrams
         } else {
-          console.error("Failed to fetch single line diagram:", data.error); // Log error if response is not ok
+          setError(data.error || "Failed to fetch Single Line Diagrams");
         }
       } catch (error) {
-        console.error("Error fetching single line diagram:", error); // Log error in case of network issues
+        console.error("Error fetching Single Line Diagrams:", error);
+        setError("Failed to fetch Single Line Diagrams due to a network error");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchDiagrams();
   }, []);
 
-  // Handle delete operation
-  const handleDelete = async (id) => {
-    const response = await fetch(`/api/single-line-diagram/${id}`, {
-      method: "DELETE",
-    });
+  // Filter diagrams based on search query (by description)
+  useEffect(() => {
+    let filtered = diagramsData;
 
-    if (response.ok) {
-      // Remove the deleted bus from the state
-      setDiagrams(diagrams.filter((diagram) => diagram._id !== id));
-      setDiagramsData(diagrams.filter((diagram) => diagram._id !== id)); // Update busesData
-    } else {
-      alert("Failed to delete single line diagram");
+    if (searchQuery) {
+      filtered = filtered.filter((diagram) =>
+        (diagram.description || "").toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    setFilteredDiagrams(filtered);
+  }, [searchQuery, diagramsData]);
+
+  const handleDelete = async (id) => {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      setError("No token found. Please log in.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/single-line-diagram/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const updatedDiagrams = diagrams.filter((diagram) => diagram._id !== id);
+        setDiagrams(updatedDiagrams);
+        setDiagramsData(updatedDiagrams);
+        setFilteredDiagrams(updatedDiagrams); // Update filteredDiagrams after deletion
+      } else {
+        const data = await response.json();
+        setError(data.error || "Failed to delete Single Line Diagram");
+      }
+    } catch (error) {
+      console.error("Error deleting Single Line Diagram:", error);
+      setError("Failed to delete Single Line Diagram due to a network error");
     }
   };
 
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
+
   return (
     <div className="font-bold text-4xl">
-      <h1 className="mb-4">Single line diagram</h1>
+      <h1 className="mb-4">Single Line Diagrams</h1>
 
       <div className="flex items-start space-x-4 mb-6">
         <div className="relative w-[85%]">
@@ -84,22 +134,23 @@ export default function Bus() {
           </span>
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Search by description..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-[45px] pl-16 pr-4 bg-[#F2F3F5] border border-gray-300 rounded-3xl placeholder:text-base font-medium text-sm leading-[45px]"
           />
         </div>
 
         <Link href="/single-line-diagram/create">
           <button className="bg-[#4B66BE] text-white text-sm px-4 py-3 rounded-lg hover:bg-[#4B66BE] flex items-center justify-center space-x-2">
-            <span>Create single line diagram</span>
+            <span>Create Single Line Diagram</span>
             <FaPlus />
           </button>
         </Link>
       </div>
 
-      <h1 className="text-3xl font-bold mb-6">single line diagram List</h1>
+      <h1 className="text-3xl font-bold mb-6">Single Line Diagram List</h1>
       <div className="container mx-auto my-6 px-4 border border-gray-300 shadow-xl rounded-lg">
-        {/* Options to upload and download */}
         <div className="mb-4 flex justify-between">
           <div className="space-x-4">
             <button
@@ -117,7 +168,6 @@ export default function Bus() {
           </div>
         </div>
 
-        {/* Wrapper for horizontal scrolling */}
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white shadow-md mb-5 rounded-sm table-auto border border-[#F1F5F9]">
             <thead className="bg-[#F1F5F9]">
@@ -126,7 +176,7 @@ export default function Bus() {
                   Select
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                  single line diagram ID
+                  Single Line Diagram ID
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
                   Description
@@ -141,17 +191,17 @@ export default function Bus() {
             </thead>
 
             <tbody>
-              {diagramsData.length === 0 ? (
+              {filteredDiagrams.length === 0 ? (
                 <tr>
                   <td
-                    colSpan="7"
+                    colSpan="5"
                     className="text-center py-4 font-normal text-sm"
                   >
-                    No singe line diagrams available
+                    No Single Line Diagrams available
                   </td>
                 </tr>
               ) : (
-                diagramsData.map((diagram, index) => (
+                filteredDiagrams.map((diagram, index) => (
                   <tr key={index} className="border-b">
                     <td className="py-2 px-6 border-r">
                       <input type="checkbox" value={diagram._id} />
@@ -169,7 +219,6 @@ export default function Bus() {
                         className="w-16 h-16 object-cover rounded"
                       />
                     </td>
-
                     <td className="py-3 px-6">
                       <div className="flex space-x-4">
                         <Link

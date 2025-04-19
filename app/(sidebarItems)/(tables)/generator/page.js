@@ -4,23 +4,21 @@ import { useState, useEffect } from "react";
 import { FaSearch } from "react-icons/fa";
 import { FaPlus } from "react-icons/fa6";
 import Link from "next/link";
-import * as XLSX from "xlsx"; // Add this for Excel functionality
+import * as XLSX from "xlsx";
 
 export default function Generator() {
   const [generators, setGenerators] = useState([]);
   const [generatorsData, setGeneratorsData] = useState(generators);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Function to download the table as an Excel file
   const downloadTableAsExcel = () => {
     const ws = XLSX.utils.json_to_sheet(generatorsData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Generator List");
-
-    // Download the Excel file
     XLSX.writeFile(wb, "generator_list.xlsx");
   };
 
-  // Function to handle file upload and parse Excel data
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -31,8 +29,6 @@ export default function Generator() {
       const wb = XLSX.read(binaryStr, { type: "binary" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(ws);
-
-      // Set the data to the state to render in the table
       setGeneratorsData(data);
     };
     reader.readAsBinaryString(file);
@@ -40,38 +36,72 @@ export default function Generator() {
 
   useEffect(() => {
     const fetchGenerators = async () => {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        setError("No token found. Please log in.");
+        setLoading(false);
+        return;
+      }
+
       try {
-        const response = await fetch("/api/generator");
+        const response = await fetch("/api/generator", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
         const data = await response.json();
 
         if (response.ok) {
-          setGenerators(data.generators); // Set generators if fetch is successful
-          setGeneratorsData(data.generators); // Set generatorsData for table display
+          setGenerators(data.generators || []);
+          setGeneratorsData(data.generators || []);
         } else {
-          console.error("Failed to fetch generators:", data.error); // Log error if response is not ok
+          setError(data.error || "Failed to fetch Generators");
         }
       } catch (error) {
-        console.error("Error fetching generators:", error); // Log error in case of network issues
+        console.error("Error fetching generators:", error);
+        setError("Failed to fetch Generators due to a network error");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchGenerators();
   }, []);
 
-  // Handle delete operation
   const handleDelete = async (id) => {
-    const response = await fetch(`/api/generator/${id}`, {
-      method: "DELETE",
-    });
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      setError("No token found. Please log in.");
+      return;
+    }
 
-    if (response.ok) {
-      // Remove the deleted generator from the state
-      setGenerators(generators.filter((generator) => generator._id !== id));
-      setGeneratorsData(generators.filter((generator) => generator._id !== id)); // Update generatorsData
-    } else {
-      alert("Failed to delete generator");
+    try {
+      const response = await fetch(`/api/generator/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        setGenerators(generators.filter((generator) => generator._id !== id));
+        setGeneratorsData(generatorsData.filter((generator) => generator._id !== id));
+      } else {
+        const data = await response.json();
+        setError(data.error || "Failed to delete Generator");
+      }
+    } catch (error) {
+      console.error("Error deleting Generator:", error);
+      setError("Failed to delete Generator due to a network error");
     }
   };
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
 
   return (
     <div className="font-bold text-4xl">
@@ -99,7 +129,6 @@ export default function Generator() {
 
       <h1 className="text-3xl font-bold mb-6">Generator List</h1>
       <div className="container mx-auto my-6 px-4 border border-gray-300 shadow-xl rounded-lg">
-        {/* Options to upload and download */}
         <div className="mb-4 flex justify-between">
           <div className="space-x-4">
             <button
@@ -117,7 +146,6 @@ export default function Generator() {
           </div>
         </div>
 
-        {/* Wrapper for horizontal scrolling */}
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white shadow-md mb-5 rounded-sm table-auto border border-[#F1F5F9]">
             <thead className="bg-[#F1F5F9]">
@@ -152,7 +180,6 @@ export default function Generator() {
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
                   KV
                 </th>
-                {/* New columns added */}
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
                   Synchronous Reactance (pu): Xd
                 </th>
@@ -250,7 +277,6 @@ export default function Generator() {
                     <td className="py-3 px-6 text-sm font-normal border-r">
                       {generator.kv}
                     </td>
-                    {/* New fields added after "KV" */}
                     <td className="py-3 px-6 text-sm font-normal border-r">
                       {generator.synchronousReactancePuXd}
                     </td>

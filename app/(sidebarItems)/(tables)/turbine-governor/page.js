@@ -4,23 +4,23 @@ import { useState, useEffect } from "react";
 import { FaSearch } from "react-icons/fa";
 import { FaPlus } from "react-icons/fa6";
 import Link from "next/link";
-import * as XLSX from "xlsx"; // Add this for Excel functionality
+import * as XLSX from "xlsx";
 
-export default function Bus() {
+export default function TurbineList() {
   const [turbines, setTurbines] = useState([]);
-  const [turbinesData, setTurbinesData] = useState(turbines);
+  const [turbinesData, setTurbinesData] = useState([]);
+  const [filteredTurbines, setFilteredTurbines] = useState([]); // New state for filtered turbines
+  const [searchQuery, setSearchQuery] = useState(""); // State for search input
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Function to download the table as an Excel file
   const downloadTableAsExcel = () => {
     const ws = XLSX.utils.json_to_sheet(turbinesData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Bus List");
-
-    // Download the Excel file
-    XLSX.writeFile(wb, "bus_list.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Turbine List");
+    XLSX.writeFile(wb, "turbine_list.xlsx");
   };
 
-  // Function to handle file upload and parse Excel data
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -31,47 +31,118 @@ export default function Bus() {
       const wb = XLSX.read(binaryStr, { type: "binary" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(ws);
-
-      // Set the data to the state to render in the table
-      setTurbinesData(data);
+      setTurbinesData(data || []);
+      setFilteredTurbines(data || []); // Update filteredTurbines when new data is uploaded
     };
     reader.readAsBinaryString(file);
   };
 
   useEffect(() => {
     const fetchTurbines = async () => {
+      setLoading(true);
+      setError(null);
+
+      const token = localStorage.getItem("authToken");
+      console.log("Token from localStorage:", token); // Debug: Log token
+      if (!token) {
+        setError("No token found. Please log in.");
+        setLoading(false);
+        return;
+      }
+
       try {
-        const response = await fetch("/api/turbine");
-        const data = await response.json();
+        const response = await fetch("/api/turbine", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const text = await response.text(); // Debug: Log raw response
+        console.log("Raw Response:", text);
+        let data;
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch (parseError) {
+          console.error("Failed to parse JSON:", parseError);
+          setError("Invalid response format from server");
+          setLoading(false);
+          return;
+        }
+        console.log("Parsed API Response:", data); // Debug: Log parsed response
 
         if (response.ok) {
-          setTurbines(data.turbines); // Set buses if fetch is successful
-          setTurbinesData(data.turbines); // Set busesData for table display
+          setTurbines(data.turbines || []);
+          setTurbinesData(data.turbines || []);
+          setFilteredTurbines(data.turbines || []); // Initialize filteredTurbines
         } else {
-          console.error("Failed to fetch Turbines:", data.error); // Log error if response is not ok
+          setError(data.error || `Failed to fetch turbines (Status: ${response.status})`);
         }
       } catch (error) {
-        console.error("Error fetching Turbines:", error); // Log error in case of network issues
+        console.error("Error fetching turbines:", error);
+        setError("Failed to fetch turbines due to a network error");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchTurbines();
   }, []);
 
-  // Handle delete operation
-  const handleDelete = async (id) => {
-    const response = await fetch(`/api/turbine/${id}`, {
-      method: "DELETE",
-    });
+  // Filter turbines based on search query (by location, turbineType, and deviceName)
+  useEffect(() => {
+    let filtered = turbinesData;
 
-    if (response.ok) {
-      // Remove the deleted bus from the state
-      setTurbines(turbines.filter((turbine) => turbine._id !== id));
-      setTurbinesData(turbines.filter((turbine) => turbine._id !== id)); // Update busesData
-    } else {
-      alert("Failed to delete turbine");
+    if (searchQuery) {
+      filtered = filtered.filter((turbine) =>
+        (turbine.location || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (turbine.turbineType || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (turbine.deviceName || "").toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    setFilteredTurbines(filtered);
+  }, [searchQuery, turbinesData]);
+
+  const handleDelete = async (id) => {
+    const token = localStorage.getItem("authToken");
+    console.log("Token from localStorage (delete):", token); // Debug: Log token
+    if (!token) {
+      setError("No token found. Please log in.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/turbine/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const text = await response.text(); // Debug: Log raw response
+      console.log("Delete Raw Response:", text);
+      const data = text ? JSON.parse(text) : {};
+      console.log("Delete Parsed API Response:", data); // Debug: Log parsed response
+
+      if (response.ok) {
+        const updatedTurbines = turbines.filter((turbine) => turbine._id !== id);
+        setTurbines(updatedTurbines);
+        setTurbinesData(updatedTurbines);
+        setFilteredTurbines(updatedTurbines); // Update filteredTurbines after deletion
+      } else {
+        alert(data.error || "Failed to delete turbine");
+      }
+    } catch (error) {
+      console.error("Error deleting turbine:", error);
+      alert("Failed to delete turbine due to a network error");
     }
   };
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
 
   return (
     <div className="font-bold text-4xl">
@@ -84,7 +155,9 @@ export default function Bus() {
           </span>
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Search by location, turbine type, or device name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-[45px] pl-16 pr-4 bg-[#F2F3F5] border border-gray-300 rounded-3xl placeholder:text-base font-medium text-sm leading-[45px]"
           />
         </div>
@@ -99,7 +172,6 @@ export default function Bus() {
 
       <h1 className="text-3xl font-bold mb-6">Turbine List</h1>
       <div className="container mx-auto my-6 px-4 border border-gray-300 shadow-xl rounded-lg">
-        {/* Options to upload and download */}
         <div className="mb-4 flex justify-between">
           <div className="space-x-4">
             <button
@@ -117,7 +189,6 @@ export default function Bus() {
           </div>
         </div>
 
-        {/* Wrapper for horizontal scrolling */}
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white shadow-md mb-5 rounded-sm table-auto border border-[#F1F5F9]">
             <thead className="bg-[#F1F5F9]">
@@ -132,7 +203,7 @@ export default function Bus() {
                   Location
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                  Turbine type 
+                  Turbine Type
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
                   Device Name
@@ -147,41 +218,41 @@ export default function Bus() {
             </thead>
 
             <tbody>
-              {turbinesData.length === 0 ? (
+              {filteredTurbines.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan="7"
-                    className="text-center py-4 font-normal text-sm"
-                  >
+                  <td colSpan="7" className="text-center py-4 font-normal text-sm">
                     No turbines available
                   </td>
                 </tr>
               ) : (
-                turbinesData.map((turbine, index) => (
-                  <tr key={index} className="border-b">
+                filteredTurbines.map((turbine, index) => (
+                  <tr key={turbine._id || index} className="border-b">
                     <td className="py-2 px-6 border-r">
                       <input type="checkbox" value={turbine._id} />
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {turbine._id}
+                      {turbine._id || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {turbine.location}
+                      {turbine.location || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {turbine.turbineType}
+                      {turbine.turbineType || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      {turbine.deviceName}
+                      {turbine.deviceName || "N/A"}
                     </td>
                     <td className="py-3 px-6 text-sm font-normal border-r">
-                      <img
-                        src={turbine.imageUrl}
-                        alt="Diagram"
-                        className="w-16 h-16 object-cover rounded"
-                      />
+                      {turbine.imageUrl ? (
+                        <img
+                          src={turbine.imageUrl}
+                          alt="Diagram"
+                          className="w-16 h-16 object-cover rounded"
+                        />
+                      ) : (
+                        "N/A"
+                      )}
                     </td>
-
                     <td className="py-3 px-6">
                       <div className="flex space-x-4">
                         <Link

@@ -7,7 +7,6 @@ export default function CapacitorEdit() {
   const router = useRouter();
   const { id } = useParams();
 
-  // Store original capacitor data
   const [originalData, setOriginalData] = useState({});
   const [formData, setFormData] = useState({
     location: "",
@@ -18,45 +17,66 @@ export default function CapacitorEdit() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // ✅ Fetch capacitor data when component mounts
   useEffect(() => {
-    const fetchCapacitor = async () => {
-      try {
-        const response = await fetch(`/api/series-capacitor/${id}`);
-        const data = await response.json();
+    const fetchSeriesCapacitor = async () => {
+      if (!id) {
+        setError("No ID provided for editing");
+        return;
+      }
 
+      try {
+        const token = localStorage.getItem("authToken");
+        if (!token) {
+          throw new Error("No token found. Please log in.");
+        }
+
+        const response = await fetch(`/api/series-capacitor/${id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`, // Add Authorization header
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Failed to fetch data: ${response.status}`);
+        }
+
+        const data = await response.json();
         if (data.success) {
-          setOriginalData(data.capacitor); // Store original data
+          setOriginalData(data.seriesCapacitor); // Updated to match API response
           setFormData({
-            location: data.capacitor.location || "",
-            mvar: data.capacitor.mvar || "",
-            compensation: data.capacitor.compensation || "",
+            location: data.seriesCapacitor.location || "",
+            mvar: data.seriesCapacitor.mvar || "",
+            compensation: data.seriesCapacitor.compensation || "",
           });
         } else {
-          setError("Capacitor not found.");
+          setError("Series Capacitor not found.");
         }
       } catch (error) {
-        console.error("Error fetching capacitor:", error);
-        setError("Failed to load capacitor data.");
+        console.error("Error fetching series capacitor:", error);
+        setError(error.message);
       }
     };
 
-    if (id) fetchCapacitor();
+    fetchSeriesCapacitor();
   }, [id]);
 
-  // ✅ Handle input changes
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // ✅ Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      // Compare current form data with original data and send only changed fields
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No token found. Please log in.");
+      }
+
       const updateData = {};
       for (const key in formData) {
         if (formData[key] !== originalData[key]) {
@@ -64,7 +84,6 @@ export default function CapacitorEdit() {
         }
       }
 
-      // If no changes were made, stop the update
       if (Object.keys(updateData).length === 0) {
         alert("No changes detected.");
         setLoading(false);
@@ -73,20 +92,28 @@ export default function CapacitorEdit() {
 
       const response = await fetch(`/api/series-capacitor/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Add Authorization header
+        },
         body: JSON.stringify(updateData),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update Series Capacitor.");
+      }
+
       const data = await response.json();
       if (data.success) {
-        alert("Capacitor updated successfully!");
+        alert("Series Capacitor updated successfully!");
         router.push("/series-capacitor");
       } else {
-        setError(data.message || "Failed to update capacitor.");
+        setError(data.message || "Failed to update Series Capacitor.");
       }
     } catch (error) {
       console.error("Update error:", error);
-      setError("Failed to update capacitor.");
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -94,7 +121,7 @@ export default function CapacitorEdit() {
 
   return (
     <div className="m-2 font-bold text-3xl">
-      <h1>Edit Capacitor</h1>
+      <h1>Edit Series Capacitor</h1>
 
       {error && <p className="text-red-500">{error}</p>}
 

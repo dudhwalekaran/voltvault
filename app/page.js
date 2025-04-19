@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { jwtDecode } from "jwt-decode"; // Corrected import syntax
+import { jwtDecode } from "jwt-decode";
 
 export default function Landing() {
   const [email, setEmail] = useState("");
@@ -12,6 +12,8 @@ export default function Landing() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+
+    console.log("Attempting login with email:", email, "password:", password);
 
     try {
       const response = await fetch("/api/login", {
@@ -58,29 +60,30 @@ export default function Landing() {
         <div className="absolute inset-0 bg-[#434867CC] opacity-85"></div>
 
         {/* Navbar - fixed on top */}
-        <div className="flex items-center justify-between p-4 absolute top-0 left-0 right-0">
+        <div className="flex items-center justify-between p-4 absolute top-0 left-0 right-0 z-20">
           <div className="logo">
             <img src="/logo (1).png" alt="Logo" className="h-16" />
           </div>
           <nav className="flex space-x-8">
             <h6 className="text-white text-base font-bold">
-              <Link
+              <a
                 href="https://drive.google.com/file/d/1pEiNQ9-XFeCBnL-c7BAYGX6i3oIgrqMJ/view"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="cursor-pointer hover:underline"
               >
                 User's Manual
-              </Link>
+              </a>
             </h6>
             <h6 className="text-white text-base font-bold">
-              <Link
+              <a
                 href="https://voltvault-docs.vercel.app/"
                 target="_blank"
                 rel="noopener noreferrer"
+                className="cursor-pointer hover:underline"
               >
                 Developer's Documentation
-              </Link>
+              </a>
             </h6>
           </nav>
         </div>

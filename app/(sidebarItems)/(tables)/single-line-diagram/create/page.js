@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useState, useRef } from 'react';
-import { FaCloudUploadAlt } from 'react-icons/fa';
-import Link from 'next/link';
+import { useState, useRef } from "react";
+import { FaCloudUploadAlt } from "react-icons/fa";
+import Link from "next/link";
 
-export default function BusCreate() {
-  const [description, setDescription] = useState('');
+export default function SingleLineDiagramCreate() {
+  const [description, setDescription] = useState("");
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [uploadData, setUploadData] = useState(null); // Holds the upload response data
@@ -35,7 +35,7 @@ export default function BusCreate() {
     e.preventDefault();
 
     if (!description || !image) {
-      alert('Please fill in the description and select an image');
+      alert("Please fill in the description and select an image");
       return;
     }
 
@@ -44,45 +44,56 @@ export default function BusCreate() {
     try {
       // Create FormData and append the image file
       const formData = new FormData();
-      formData.append('file', image); // Append image
-      formData.append('upload_preset', 'pslab_images'); // Set the upload preset
+      formData.append("file", image); // Append image
+      formData.append("upload_preset", "pslab_images"); // Set the upload preset
 
       // Upload image to Cloudinary
-      const uploadResponse = await fetch('https://api.cloudinary.com/v1_1/dipmjt9ta/image/upload', {
-        method: 'POST',
-        body: formData,
-      }).then((res) => res.json());
+      const uploadResponse = await fetch(
+        "https://api.cloudinary.com/v1_1/dipmjt9ta/image/upload",
+        {
+          method: "POST",
+          body: formData,
+        }
+      ).then((res) => res.json());
 
       // Check for success
       if (!uploadResponse.secure_url) {
-        throw new Error('Image upload failed');
+        throw new Error("Image upload failed");
       }
 
       // Image URL after uploading to Cloudinary
       const imageUrl = uploadResponse.secure_url;
 
-      // Send data to your backend (MongoDB) API
-      const response = await fetch('/api/single-line-diagram', {
-        method: 'POST',
+      // Send data to your backend (MongoDB) API with JWT
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No token found. Please log in.");
+      }
+
+      const response = await fetch("/api/single-line-diagram", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ description, imageUrl }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to save diagram');
+      const data = await response.json();
+      console.log("API Response:", data);
+
+      if (response.ok) {
+        alert(data.message); // Role-specific message from backend
+        setDescription("");
+        setImage(null);
+        setImagePreview(null);
+        setUploadData(uploadResponse); // Save upload data (e.g., Cloudinary response)
+      } else {
+        throw new Error(data.error || "Failed to save diagram");
       }
-
-      alert('Diagram created successfully!');
-      setDescription('');
-      setImage(null);
-      setImagePreview(null);
-      setUploadData(uploadResponse); // Save upload data (e.g. Cloudinary response)
-
     } catch (error) {
-      console.error('Error:', error);
-      alert('An error occurred, please try again');
+      console.error("Error:", error);
+      alert(error.message || "An error occurred, please try again");
     } finally {
       setIsSubmitting(false);
     }
@@ -146,7 +157,7 @@ export default function BusCreate() {
           className="bg-blue-800 w-48 text-white py-2 px-6 font-normal text-base rounded-lg hover:bg-blue-800"
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Submitting...' : 'Submit'}
+          {isSubmitting ? "Submitting..." : "Submit"}
         </button>
         <Link href="/single-line-diagram">
           <button className="bg-red-600 w-48 text-white py-2 px-6 font-normal text-base rounded-lg hover:bg-red-600">

@@ -21,34 +21,57 @@ export default function ShuntReactorEdit() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchCapacitor = async () => {
-      if (!id) return;
-      try {
-        const response = await fetch(`/api/shunt-reactor/${id}`);
-        if (!response.ok) throw new Error("Failed to fetch data");
+    const fetchShuntReactor = async () => {
+      if (!id) {
+        setError("No ID provided for editing");
+        setLoading(false);
+        return;
+      }
 
-        const data = await response.json();
-        if (!data.success || !data.shunt) {
-          throw new Error("Shunt Capacitor not found.");
+      try {
+        const token = localStorage.getItem("authToken");
+        if (!token) {
+          throw new Error("No token found. Please log in.");
         }
 
-        setOriginalData(data.shunt);
+        console.log("Fetching data for ID:", id); // Debug log
+        const response = await fetch(`/api/shunt-reactor/${id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`, // Add Authorization header
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Failed to fetch data: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("API Response:", data); // Debug log
+
+        if (!data.success || !data.shuntReactor) {
+          throw new Error("Shunt Reactor not found.");
+        }
+
+        setOriginalData(data.shuntReactor);
         setFormData({
-          location: data.shunt.location || "",
-          circuitBreaker: data.shunt.circuitBreaker || false,
-          busFrom: data.shunt.busFrom || "",
-          busSectionFrom: data.shunt.busSectionFrom || "",
-          kv: data.shunt.kv || "",
-          mva: data.shunt.mva || "",
+          location: data.shuntReactor.location || "",
+          circuitBreaker: data.shuntReactor.circuitBreaker || false,
+          busFrom: data.shuntReactor.busFrom || "",
+          busSectionFrom: data.shuntReactor.busSectionFrom || "",
+          kv: data.shuntReactor.kv || "",
+          mva: data.shuntReactor.mva || "",
         });
       } catch (error) {
+        console.error("Error fetching data:", error.message);
         setError(error.message);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCapacitor();
+    fetchShuntReactor();
   }, [id]);
 
   const handleChange = (e) => {
@@ -65,6 +88,11 @@ export default function ShuntReactorEdit() {
     setError(null);
 
     try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No token found. Please log in.");
+      }
+
       const updateData = {};
       for (const key in formData) {
         if (formData[key] !== originalData[key]) {
@@ -80,16 +108,27 @@ export default function ShuntReactorEdit() {
 
       const response = await fetch(`/api/shunt-reactor/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Add Authorization header
+        },
         body: JSON.stringify(updateData),
       });
 
-      const data = await response.json();
-      if (!data.success) throw new Error(data.message || "Failed to update.");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update Shunt Reactor.");
+      }
 
-      alert("Shunt Capacitor updated successfully!");
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || "Failed to update Shunt Reactor.");
+      }
+
+      alert("Shunt Reactor updated successfully!");
       router.push("/shunt-reactor");
     } catch (error) {
+      console.error("Error updating Shunt Reactor:", error.message);
       setError(error.message);
     } finally {
       setLoading(false);
@@ -98,7 +137,7 @@ export default function ShuntReactorEdit() {
 
   return (
     <div className="m-2 font-semibold text-lg">
-      <h1 className="text-xl font-bold">Edit Shunt Capacitor</h1>
+      <h1 className="text-xl font-bold">Edit Shunt Reactor</h1>
 
       {error && <p className="text-red-500 text-sm">{error}</p>}
       {loading ? (

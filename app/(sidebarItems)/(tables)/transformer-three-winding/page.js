@@ -8,9 +8,10 @@ import * as XLSX from "xlsx";
 
 export default function TransformerThreeWindingList() {
   const [windings, setWindings] = useState([]);
-  const [windingsData, setWindingsData] = useState([]); // Changed to explicit empty array
+  const [windingsData, setWindingsData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Function to download the table as an Excel file
   const downloadTableAsExcel = () => {
     const ws = XLSX.utils.json_to_sheet(windingsData);
     const wb = XLSX.utils.book_new();
@@ -18,7 +19,6 @@ export default function TransformerThreeWindingList() {
     XLSX.writeFile(wb, "transformer_three_winding_list.xlsx");
   };
 
-  // Function to handle file upload and parse Excel data
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -29,40 +29,63 @@ export default function TransformerThreeWindingList() {
       const wb = XLSX.read(binaryStr, { type: "binary" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(ws);
-      setWindingsData(data || []); // Ensure data is an array
+      setWindingsData(data || []);
     };
     reader.readAsBinaryString(file);
   };
 
   useEffect(() => {
     const fetchWindings = async () => {
-      try {
-        const response = await fetch("/api/transformer-three-winding");
-        const data = await response.json();
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        setError("No token found. Please log in.");
+        setLoading(false);
+        return;
+      }
 
-        if (response.ok && Array.isArray(data.windings)) {
-          setWindings(data.windings);
-          setWindingsData(data.windings);
+      try {
+        const response = await fetch("/api/transformer-three-winding", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data = await response.json();
+        console.log("API Response:", data);
+
+        if (response.ok) {
+          setWindings(data.transformers || []);
+          setWindingsData(data.transformers || []);
         } else {
-          console.error("Failed to fetch transformers:", data.error || "Invalid data format");
-          setWindings([]); // Reset to empty array on failure
-          setWindingsData([]);
+          setError(data.error || "Failed to fetch Transformer Three Windings");
         }
       } catch (error) {
-        console.error("Error fetching transformers:", error);
-        setWindings([]); // Reset to empty array on error
-        setWindingsData([]);
+        console.error("Error fetching Transformer Three Windings:", error);
+        setError("Failed to fetch Transformer Three Windings due to a network error");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchWindings();
   }, []);
 
-  // Handle delete operation
   const handleDelete = async (id) => {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      setError("No token found. Please log in.");
+      return;
+    }
+
     try {
       const response = await fetch(`/api/transformer-three-winding/${id}`, {
         method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (response.ok) {
@@ -70,17 +93,20 @@ export default function TransformerThreeWindingList() {
         setWindingsData(windingsData.filter((winding) => winding._id !== id));
       } else {
         const data = await response.json();
-        alert(`Failed to delete winding: ${data.error || "Unknown error"}`);
+        setError(data.error || "Failed to delete Transformer Three Winding");
       }
     } catch (error) {
-      console.error("Error deleting winding:", error);
-      alert("Failed to delete winding due to a network error");
+      console.error("Error deleting Transformer Three Winding:", error);
+      setError("Failed to delete Transformer Three Winding due to a network error");
     }
   };
 
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
+
   return (
     <div className="font-bold text-4xl">
-      <h1 className="mb-4">Transformers Three Winding</h1>
+      <h1 className="mb-4">Transformer Three Winding</h1>
 
       <div className="flex items-start space-x-4 mb-6">
         <div className="relative w-[85%]">
@@ -96,7 +122,7 @@ export default function TransformerThreeWindingList() {
 
         <Link href="/transformer-three-winding/create">
           <button className="bg-[#4B66BE] text-white text-sm px-4 py-3 rounded-lg hover:bg-[#4B66BE] flex items-center justify-center space-x-2">
-            <span>Create Transformer</span>
+            <span>Create Transformer Three Winding</span>
             <FaPlus />
           </button>
         </Link>
@@ -161,7 +187,7 @@ export default function TransformerThreeWindingList() {
               {windingsData.length === 0 ? (
                 <tr>
                   <td colSpan="30" className="text-center py-4 font-normal text-sm">
-                    No transformers available
+                    No Transformer Three Windings available
                   </td>
                 </tr>
               ) : (

@@ -16,21 +16,12 @@ export default function BusCreate() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
-    // Validate that all required fields are filled
-    if (
-      !location ||
-      !busFrom ||
-      !busSectionFrom ||
-      kv === "" ||
-      mva === ""
-    ) {
+  
+    if (!location || !busFrom || !busSectionFrom || kv === "" || mva === "") {
       setError("All fields are required.");
       return;
     }
-
-    setLoading(true);
-
+  
     try {
       const shuntData = {
         location,
@@ -41,32 +32,38 @@ export default function BusCreate() {
         mva,
       };
       console.log("Sending data to API:", shuntData);
-
+  
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No token found. Please log in.");
+      }
+  
       const response = await fetch("/api/shunt-reactor", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(shuntData),
       });
-
+  
       const data = await response.json();
       console.log("API Response:", data);
-
+  
       if (response.ok) {
-        alert("Shunt created successfully!");
+        alert(data.message); // Role-specific message from backend
         setLocation("");
-        setCircuitBreaker(false); // Reset circuit to false
+        setCircuitBreaker(false);
         setBusFrom("");
         setBusSectionFrom("");
-        setKv(""); // Reset pmw to empty string
-        setMva(""); // Reset qmvar to empty string
+        setKv("");
+        setMva("");
       } else {
         setError(data.error);
       }
     } catch (error) {
       console.error("Error during fetch:", error);
-      setError("Failed to create bus");
+      setError(error.message || "Failed to create Shunt Reactor");
     } finally {
       setLoading(false);
     }

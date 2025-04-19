@@ -1,26 +1,26 @@
-'use client';
+"use client";
 
 import { useState, useEffect } from "react";
 import { FaSearch } from "react-icons/fa";
 import { FaPlus } from "react-icons/fa6";
-import Link from 'next/link'
-import * as XLSX from "xlsx"; //
+import Link from "next/link";
+import * as XLSX from "xlsx";
 
-export default function Loads() {
+export default function LccList() {
   const [lccs, setLccs] = useState([]);
-  const [lccsData, setLccsData] = useState(lccs);
+  const [lccsData, setLccsData] = useState([]);
+  const [filteredLccs, setFilteredLccs] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Function to download the table as an Excel file
   const downloadTableAsExcel = () => {
     const ws = XLSX.utils.json_to_sheet(lccsData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Ibr List");
-
-    // Download the Excel file
-    XLSX.writeFile(wb, "load_list.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Lcc List");
+    XLSX.writeFile(wb, "lcc_list.xlsx");
   };
 
-  // Function to handle file upload and parse Excel data
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -31,50 +31,97 @@ export default function Loads() {
       const wb = XLSX.read(binaryStr, { type: "binary" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const data = XLSX.utils.sheet_to_json(ws);
-
-      // Set the data to the state to render in the table
-      setLccsData(data);
+      setLccsData(data || []);
+      setFilteredLccs(data || []);
     };
     reader.readAsBinaryString(file);
   };
 
   useEffect(() => {
     const fetchLccs = async () => {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        setError("No token found. Please log in.");
+        setLoading(false);
+        return;
+      }
+
       try {
-        const response = await fetch("/api/lcc");
+        const response = await fetch("/api/lcc", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`HTTP error! Status: ${response.status}, Body: ${text}`);
+        }
+
         const data = await response.json();
-
-        // Log the response data for debugging
-        console.log("API Response:", data);
-
         if (response.ok) {
-          setLccs(data.lccs || []); // Ensure the loades array is being set correctly
-          setLccsData(data.lccs || []); // Ensure loadesData is also updated
+          setLccs(data.lccs || []);
+          setLccsData(data.lccs || []);
+          setFilteredLccs(data.lccs || []);
         } else {
-          console.error("Failed to fetch Lcc:", data.error); // Log error if response is not ok
+          setError(data.error || "Failed to fetch Lccs");
         }
       } catch (error) {
-        console.error("Error fetching Lcc:", error); // Log error in case of network issues
+        setError(error.message || "Failed to fetch Lccs due to a network error");
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchLccs();
   }, []);
 
-  // Handle delete operation
-  const handleDelete = async (id) => {
-    const response = await fetch(`/api/lcc/${id}`, {
-      method: "DELETE",
-    });
+  useEffect(() => {
+    let filtered = lccsData;
 
-    if (response.ok) {
-      // Remove the deleted load from the state
-      setLccs(lccs.filter((lccs) => lccs._id !== id));
-      setLccsData(lccs.filter((lccs) => lccs._id !== id)); // Update loadesData
-    } else {
-      alert("Failed to delete ibr");
+    if (searchQuery) {
+      filtered = filtered.filter((lcc) =>
+        (lcc.lcc || "").toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    setFilteredLccs(filtered);
+  }, [searchQuery, lccsData]);
+
+  const handleDelete = async (id) => {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      setError("No token found. Please log in.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/lcc/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const updatedLccs = lccs.filter((lcc) => lcc._id !== id);
+        setLccs(updatedLccs);
+        setLccsData(updatedLccs);
+        setFilteredLccs(updatedLccs);
+      } else {
+        const data = await response.json();
+        setError(data.error || "Failed to delete Lcc");
+      }
+    } catch (error) {
+      setError("Failed to delete Lcc due to a network error");
     }
   };
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
 
   return (
     <div className="font-bold text-4xl">
@@ -87,7 +134,9 @@ export default function Loads() {
           </span>
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Search by Lcc-hvdc-link..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-[45px] pl-16 pr-4 bg-[#F2F3F5] border border-gray-300 rounded-3xl placeholder:text-base font-medium text-sm leading-[45px]"
           />
         </div>
@@ -102,7 +151,6 @@ export default function Loads() {
 
       <h1 className="text-3xl font-bold mb-6">Lcc-hvdc-link List</h1>
       <div className="container mx-auto my-6 px-4 border border-gray-300 shadow-xl rounded-lg">
-        {/* Options to upload and download */}
         <div className="mb-4 flex justify-between">
           <div className="space-x-4">
             <button
@@ -120,7 +168,6 @@ export default function Loads() {
           </div>
         </div>
 
-        {/* Wrapper for horizontal scrolling */}
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white mb-5 shadow-md rounded-sm table-auto border border-[#F1F5F9]">
             <thead className="bg-[#F1F5F9]">
@@ -132,7 +179,7 @@ export default function Loads() {
                   Lcc ID
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal border-r whitespace-nowrap">
-                 Lcc-hvdc-link
+                  Lcc-hvdc-link
                 </th>
                 <th className="py-3 px-6 text-left text-sm font-normal whitespace-nowrap">
                   Actions
@@ -141,20 +188,24 @@ export default function Loads() {
             </thead>
 
             <tbody>
-              {lccsData.length === 0 ? (
+              {filteredLccs.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="text-center py-4 font-normal text-sm">
-                    No Lcc-hvdc-link
+                  <td colSpan="4" className="text-center py-4 font-normal text-sm">
+                    No Lcc-hvdc-links available
                   </td>
                 </tr>
               ) : (
-                lccsData.map((lcc, index) => (
-                  <tr key={index} className="border-b">
+                filteredLccs.map((lcc, index) => (
+                  <tr key={lcc._id || index} className="border-b">
                     <td className="py-2 px-6 border-r">
                       <input type="checkbox" value={lcc._id} />
                     </td>
-                    <td className="py-3 px-6 text-sm font-normal border-r">{lcc._id}</td>
-                    <td className="py-3 px-6 text-sm font-normal border-r">{lcc.lcc}</td>
+                    <td className="py-3 px-6 text-sm font-normal border-r">
+                      {lcc._id || "N/A"}
+                    </td>
+                    <td className="py-3 px-6 text-sm font-normal border-r">
+                      {lcc.lcc || "N/A"}
+                    </td>
                     <td className="py-3 px-6">
                       <div className="flex space-x-4">
                         <Link
