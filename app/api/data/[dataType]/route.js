@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import connect from "@/lib/db";
 import PendingRequest from "@/models/PendingRequest";
-import History from "@/app/models/History";
+import History from "@/models/History";
 import jwt from "jsonwebtoken";
 import SingleLineDiagram from "@/models/SingleLineDiagram";
 import TransformerThreeWinding from "@/app/components/transformerThreeWinding";
