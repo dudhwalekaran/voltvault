@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Lcc from "@/models/Lcc-hvdc-link";
+import PendingRequest from "@/models/PendingRequest"; // Ensure this model exists
 import History from "@/models/History";
 import jwt from "jsonwebtoken";
 
@@ -63,20 +64,19 @@ export async function POST(req) {
       return NextResponse.json({ error: "Database connection failed", details: error.message }, { status: 500 });
     }
 
-    // Save Lcc
-    const lccStatus = decoded.status === "admin" ? "approved" : "pending";
-    const newLcc = new Lcc({
-      lcc,
-      status: lccStatus,
-      createdBy: decoded.userId,
-    });
+    const role = decoded.status ? decoded.status.toLowerCase() : "unknown";
+    console.log("User role:", role);
 
-    const savedLcc = await newLcc.save();
-    console.log("Lcc Saved:", savedLcc);
+    if (role === "admin") {
+      console.log("Admin role detected, creating Lcc directly");
+      const newLcc = new Lcc({
+        lcc,
+        createdBy: decoded.userId,
+      });
+      const savedLcc = await newLcc.save();
+      console.log("Lcc Saved:", savedLcc);
 
-    // Log history if user is admin
-    if (decoded.status === "admin") {
-      console.log("User is admin, logging history...");
+      // Log the action to History
       const history = new History({
         action: "create",
         dataType: "Lcc",
@@ -87,14 +87,36 @@ export async function POST(req) {
       });
       await history.save();
       console.log("History entry created:", history);
-    } else {
-      console.log("User is not admin, skipping history log");
+
+      const response = {
+        success: true,
+        message: "Lcc created successfully",
+        lcc: savedLcc,
+      };
+      console.log("Sending Response:", response);
+      return NextResponse.json(response, { status: 201 });
     }
 
-    // Success response
-    const response = { success: true, message: "Lcc created successfully", lcc: savedLcc };
+    console.log("Non-admin role detected, saving to PendingRequest");
+    const pendingRequest = new PendingRequest({
+      dataType: "Lcc",
+      data: { lcc },
+      submittedBy: decoded.userId || decoded.email || "unknown",
+      username: decoded.username || decoded.name || "unknown",
+      email: decoded.email || "unknown",
+      description: `Add Lcc: ${lcc}`,
+      status: "pending",
+    });
+    const savedPendingRequest = await pendingRequest.save();
+    console.log("PendingRequest saved:", savedPendingRequest);
+
+    const response = {
+      success: true,
+      message: "Lcc request submitted for approval",
+      pendingRequest: savedPendingRequest,
+    };
     console.log("Sending Response:", response);
-    return NextResponse.json(response, { status: 200 });
+    return NextResponse.json(response, { status: 201 });
 
   } catch (error) {
     console.error("=== POST /api/lcc Failed ===", error.message, error.stack);

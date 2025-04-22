@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import connect from "@/lib/db";
 import Load from "@/models/Load";
+import PendingRequest from "@/models/PendingRequest"; // Ensure this model exists
 import History from "@/models/History";
 import jwt from "jsonwebtoken";
 
@@ -55,23 +56,24 @@ export async function POST(req) {
     await connect();
     console.log("DB Connected");
 
-    // Direct save
-    const newLoad = new Load({
-      location,
-      circuitBreaker,
-      busFrom,
-      busSectionFrom,
-      pmw,
-      qmvar,
-      status: decoded.status === "admin" ? "approved" : "pending",
-      createdBy: decoded.userId,
-    });
-    const savedLoad = await newLoad.save();
-    console.log("Load Saved:", savedLoad);
+    const role = decoded.status ? decoded.status.toLowerCase() : "unknown";
+    console.log("User role:", role);
 
-    // Log history for admins
-    if (decoded.status === "admin") {
-      console.log("User is admin, logging history...");
+    if (role === "admin") {
+      console.log("Admin role detected, creating Load directly");
+      const newLoad = new Load({
+        location,
+        circuitBreaker,
+        busFrom,
+        busSectionFrom,
+        pmw,
+        qmvar,
+        createdBy: decoded.userId,
+      });
+      const savedLoad = await newLoad.save();
+      console.log("Load Saved:", savedLoad);
+
+      // Log the action to History
       const history = new History({
         action: "create",
         dataType: "Load",
@@ -89,18 +91,36 @@ export async function POST(req) {
       });
       await history.save();
       console.log("History entry created:", history);
-    } else {
-      console.log("User is not admin, skipping history log");
+
+      const response = {
+        success: true,
+        message: "Load created successfully",
+        load: savedLoad,
+      };
+      console.log("Sending Response:", response);
+      return NextResponse.json(response, { status: 201 });
     }
 
-    // Return with 200
+    console.log("Non-admin role detected, saving to PendingRequest");
+    const pendingRequest = new PendingRequest({
+      dataType: "Load",
+      data: { location, circuitBreaker, busFrom, busSectionFrom, pmw, qmvar },
+      submittedBy: decoded.userId || decoded.email || "unknown",
+      username: decoded.username || decoded.name || "unknown",
+      email: decoded.email || "unknown",
+      description: `Add Load: ${JSON.stringify({ location, circuitBreaker, busFrom, busSectionFrom, pmw, qmvar })}`,
+      status: "pending",
+    });
+    const savedPendingRequest = await pendingRequest.save();
+    console.log("PendingRequest saved:", savedPendingRequest);
+
     const response = {
       success: true,
-      message: "Load created successfully",
-      load: savedLoad,
+      message: "Load request submitted for approval",
+      pendingRequest: savedPendingRequest,
     };
     console.log("Sending Response:", response);
-    return NextResponse.json(response, { status: 200 });
+    return NextResponse.json(response, { status: 201 });
 
   } catch (error) {
     console.error("=== POST /api/load Failed ===", error.message, error.stack);

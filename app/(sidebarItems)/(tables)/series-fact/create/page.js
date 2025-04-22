@@ -15,7 +15,19 @@ export default function SeriesFactCreate() {
     setLoading(true);
     setError(null);
 
-    const seriesData = { series };
+    const trimmedSeries = series.trim();
+    if (!trimmedSeries) {
+      setError("Series fact is required");
+      setLoading(false);
+      return;
+    }
+    if (trimmedSeries.length < 3) {
+      setError("Series fact must be at least 3 characters");
+      setLoading(false);
+      return;
+    }
+
+    const seriesData = { series: trimmedSeries };
     console.log("Sending data to API:", seriesData);
 
     const token = localStorage.getItem("authToken");
@@ -39,13 +51,10 @@ export default function SeriesFactCreate() {
       console.log("API Response:", data);
 
       if (response.ok && data.success) {
-        // Success case
         alert(data.message || "Series Fact created successfully!");
         setSeries("");
-        // Redirect to the series fact list page
         router.push("/series-fact");
       } else {
-        // Failure case
         setError(data.error || "Failed to create Series Fact");
       }
     } catch (error) {

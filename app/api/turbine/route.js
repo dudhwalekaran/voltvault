@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Turbine from "@/models/Turbine";
+import PendingRequest from "@/models/PendingRequest"; // Ensure this model exists
 import History from "@/models/History";
 import { handleSubmission } from "@/lib/handleSubmission";
 import jwt from "jsonwebtoken";
@@ -70,50 +71,26 @@ export async function POST(req) {
     await connectDB();
     console.log("Database connected successfully");
 
-    // Handle submission
-    const result = await handleSubmission({
-      req,
-      dataType: "Turbine",
-      data: {
+    const role = decoded.status ? decoded.status.toLowerCase() : "unknown";
+    console.log("User role:", role);
+
+    if (role === "admin") {
+      console.log("Admin role detected, creating Turbine directly");
+      const newTurbine = new Turbine({
         location,
         turbineType,
         deviceName,
         imageUrl,
-        status: decoded.status === "admin" ? "approved" : "pending",
         createdBy: decoded.userId,
-      },
-      Model: Turbine,
-      description: `Add Turbine: ${deviceName} at ${location}`,
-    });
+      });
+      const savedTurbine = await newTurbine.save();
+      console.log("Turbine created:", savedTurbine);
 
-    console.log("handleSubmission Result:", JSON.stringify(result, null, 2));
-
-    if (result.error) {
-      console.error("Error from handleSubmission:", result.error);
-      return NextResponse.json(
-        { error: result.error.message, details: result.error.details },
-        { status: result.error.status || 500 }
-      );
-    }
-
-    if (!result.success || !result.success._id) {
-      console.error("Unexpected handleSubmission result:", result);
-      return NextResponse.json(
-        { error: "Unexpected server error: Invalid result from submission" },
-        { status: 500 }
-      );
-    }
-
-    const turbine = result.success;
-    console.log("Turbine created:", turbine);
-
-    // Log to History if approved (admin)
-    if (turbine.status === "approved") {
-      console.log("Logging history for approved Turbine...");
+      // Log the action to History
       const history = new History({
         action: "create",
         dataType: "Turbine",
-        recordId: turbine._id.toString(),
+        recordId: savedTurbine._id.toString(),
         adminEmail: decoded.email || decoded.userId || "unknown",
         adminName: decoded.username || decoded.name || "unknown",
         details: `Created Turbine: ${JSON.stringify({
@@ -125,20 +102,36 @@ export async function POST(req) {
       });
       await history.save();
       console.log("History entry created:", history);
-    } else {
-      console.log("Turbine pending approval, skipping history log");
+
+      const response = {
+        success: true,
+        message: "Turbine created successfully",
+        turbine: savedTurbine,
+      };
+      console.log("Sending Response:", response);
+      return NextResponse.json(response, { status: 201 });
     }
+
+    console.log("Non-admin role detected, saving to PendingRequest");
+    const pendingRequest = new PendingRequest({
+      dataType: "Turbine",
+      data: { location, turbineType, deviceName, imageUrl },
+      submittedBy: decoded.userId || decoded.email || "unknown",
+      username: decoded.username || decoded.name || "unknown",
+      email: decoded.email || "unknown",
+      description: `Add Turbine: ${deviceName} at ${location}`,
+      status: "pending",
+    });
+    const savedPendingRequest = await pendingRequest.save();
+    console.log("PendingRequest saved:", savedPendingRequest);
 
     const response = {
       success: true,
-      message:
-        turbine.status === "approved"
-          ? "Turbine created successfully"
-          : "Turbine request submitted for approval",
-      turbine,
+      message: "Turbine request submitted for approval",
+      pendingRequest: savedPendingRequest,
     };
     console.log("Sending Response:", response);
-    return NextResponse.json(response, { status: 200 });
+    return NextResponse.json(response, { status: 201 });
 
   } catch (error) {
     console.error("=== POST /api/turbine Failed ===", error.message, error.stack);

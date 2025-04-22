@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Vsc from "@/models/Vsc-hvdc-link";
+import PendingRequest from "@/models/PendingRequest"; // Import PendingRequest model
 import History from "@/models/History";
 import jwt from "jsonwebtoken";
 
@@ -16,26 +17,28 @@ export async function POST(req) {
         { status: 500 }
       );
     }
-    console.log("JWT_SECRET:", process.env.JWT_SECRET);
 
     // Get and validate token
     const authHeader = req.headers.get("authorization");
-    console.log("Auth Header:", authHeader);
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       console.log("No valid token");
-      return NextResponse.json({ error: "Unauthorized: Missing or invalid token" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized: Missing or invalid token" },
+        { status: 401 }
+      );
     }
 
     const token = authHeader.split(" ")[1];
-    console.log("Token:", token);
-
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
       console.log("Decoded Token:", decoded);
     } catch (error) {
       console.error("JWT Verify Failed:", error.message);
-      return NextResponse.json({ error: "Invalid token", details: error.message }, { status: 401 });
+      return NextResponse.json(
+        { error: "Invalid token", details: error.message },
+        { status: 401 }
+      );
     }
 
     // Parse body
@@ -46,7 +49,10 @@ export async function POST(req) {
       console.log("Request Body:", body);
     } catch (error) {
       console.error("Body Parse Failed:", error.message);
-      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid request body" },
+        { status: 400 }
+      );
     }
 
     if (!vscFact) {
@@ -55,46 +61,62 @@ export async function POST(req) {
     }
 
     // Connect to DB
-    try {
-      await connectDB();
-      console.log("DB Connected");
-    } catch (error) {
-      console.error("DB Connection Failed:", error.message);
-      return NextResponse.json({ error: "Database connection failed", details: error.message }, { status: 500 });
-    }
+    await connectDB();
+    console.log("Database connected successfully");
 
-    // Save VSC
-    const vscStatus = decoded.status === "admin" ? "approved" : "pending";
-    const newVsc = new Vsc({
-      vsc: vscFact,
-      status: vscStatus,
-      createdBy: decoded.userId,
-    });
+    const role = decoded.status ? decoded.status.toLowerCase() : "unknown";
+    console.log("User role:", role);
 
-    const savedVsc = await newVsc.save();
-    console.log("VSC Saved:", savedVsc);
+    if (role === "admin") {
+      console.log("Admin role detected, creating VSC directly");
+      const newVsc = new Vsc({
+        vsc: vscFact,
+        createdBy: decoded.userId,
+      });
+      const savedVsc = await newVsc.save();
+      console.log("VSC saved directly:", savedVsc);
 
-    // Log history if user is admin (mirroring PUT/DELETE)
-    if (decoded.status === "admin") {
-      console.log("User is admin, logging history...");
+      // Log the action to History
       const history = new History({
         action: "create",
         dataType: "Vsc",
         recordId: savedVsc._id.toString(),
-        adminEmail: decoded.email || decoded.userId || "Unknown",
-        adminName: decoded.username || decoded.name || "Unknown",
+        adminEmail: decoded.email || decoded.userId || "unknown",
+        adminName: decoded.username || decoded.name || "unknown",
         details: `Created VSC: ${JSON.stringify({ vsc: vscFact })}`,
       });
-      await history.save();
+      await History.save();
       console.log("History entry created:", history);
-    } else {
-      console.log("User is not admin, skipping history log");
+
+      const response = {
+        success: true,
+        message: "VSC created successfully",
+        vsc: savedVsc,
+      };
+      console.log("Sending Response:", response);
+      return NextResponse.json(response, { status: 201 });
     }
 
-    // Success response
-    const response = { success: true, vsc: savedVsc };
+    console.log("Non-admin role detected, saving VSC to PendingRequest");
+    const pendingRequest = new PendingRequest({
+      dataType: "Vsc",
+      data: { vsc: vscFact },
+      submittedBy: decoded.userId || decoded.email || "unknown",
+      username: decoded.username || decoded.name || "unknown",
+      email: decoded.email || "unknown",
+      description: `Add VSC: ${vscFact}`,
+      status: "pending",
+    });
+    const savedPendingRequest = await pendingRequest.save();
+    console.log("PendingRequest saved:", savedPendingRequest);
+
+    const response = {
+      success: true,
+      message: "VSC request submitted for approval",
+      pendingRequest: savedPendingRequest,
+    };
     console.log("Sending Response:", response);
-    return NextResponse.json(response, { status: 200 });
+    return NextResponse.json(response, { status: 201 });
 
   } catch (error) {
     console.error("=== POST /api/vsc Failed ===", error.message, error.stack);
@@ -104,7 +126,6 @@ export async function POST(req) {
     );
   }
 }
-
 // GET handler (unchanged)
 export async function GET(req) {
   try {

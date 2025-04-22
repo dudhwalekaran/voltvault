@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import connect from "@/lib/db";
 import ShuntFact from "@/models/shuntFact";
+import PendingRequest from "@/models/PendingRequest"; // Ensure this model exists
 import History from "@/models/History";
 import jwt from "jsonwebtoken";
 
@@ -67,19 +68,19 @@ export async function POST(req) {
     await connect();
     console.log("DB Connected");
 
-    // Save Shunt Fact directly
-    const shuntStatus = decoded.status === "admin" ? "approved" : "pending";
-    const newShunt = new ShuntFact({
-      shunt,
-      status: shuntStatus,
-      createdBy: decoded.userId,
-    });
-    const savedShunt = await newShunt.save();
-    console.log("Shunt Fact Saved:", savedShunt);
+    const role = decoded.status ? decoded.status.toLowerCase() : "unknown";
+    console.log("User role:", role);
 
-    // Log history for admin creations (mirroring /vsc/[id]/route.js)
-    if (decoded.status === "admin") {
-      console.log("User is admin, logging history...");
+    if (role === "admin") {
+      console.log("Admin role detected, creating Shunt Fact directly");
+      const newShunt = new ShuntFact({
+        shunt,
+        createdBy: decoded.userId,
+      });
+      const savedShunt = await newShunt.save();
+      console.log("Shunt Fact Saved:", savedShunt);
+
+      // Log the action to History
       const history = new History({
         action: "create",
         dataType: "ShuntFact",
@@ -90,14 +91,36 @@ export async function POST(req) {
       });
       await history.save();
       console.log("History entry created:", history);
-    } else {
-      console.log("User is not admin, skipping history log");
+
+      const response = {
+        success: true,
+        message: "Shunt Fact created successfully!",
+        shunt: savedShunt,
+      };
+      console.log("Sending Response:", response);
+      return NextResponse.json(response, { status: 201 });
     }
 
-    // Success response
-    const response = { success: true, message: "Shunt Fact created successfully!", shunt: savedShunt };
+    console.log("Non-admin role detected, saving to PendingRequest");
+    const pendingRequest = new PendingRequest({
+      dataType: "ShuntFact",
+      data: { shunt },
+      submittedBy: decoded.userId || decoded.email || "unknown",
+      username: decoded.username || decoded.name || "unknown",
+      email: decoded.email || "unknown",
+      description: `Add Shunt Fact: ${shunt}`,
+      status: "pending",
+    });
+    const savedPendingRequest = await pendingRequest.save();
+    console.log("PendingRequest saved:", savedPendingRequest);
+
+    const response = {
+      success: true,
+      message: "Shunt Fact request submitted for approval",
+      pendingRequest: savedPendingRequest,
+    };
     console.log("Sending Response:", response);
-    return NextResponse.json(response, { status: 200 });
+    return NextResponse.json(response, { status: 201 });
 
   } catch (error) {
     console.error("=== POST /api/shunt-fact Failed ===", error.message, error.stack);
