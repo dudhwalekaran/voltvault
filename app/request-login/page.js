@@ -86,7 +86,7 @@ export default function RequestLogin() {
         </div>
 
         {/* Login Overlay */}
-        <div className="login-overlay absolute right-8 top-32 w-[26%] h-[80%] bg-[#646B77] bg-opacity-90 rounded-lg p-6 shadow-xl z-10">
+        <div className="login-overlay absolute right-8 top-32 w-[26%] h-[70%] bg-[#646B77] bg-opacity-90 rounded-lg p-6 shadow-xl z-10">
           <h3 className="text-lg font-semibold text-white mb-2">
             Login to your Account
           </h3>
