@@ -62,7 +62,7 @@ export default function ForgotPass() {
         </div>
 
         {/* Login Overlay */}
-        <div className="login-overlay absolute right-10 top-40 w-[26%] h-[47%] bg-[#646B77] bg-opacity-85 rounded-lg p-6 shadow-xl z-10">
+        <div className="login-overlay absolute right-10 top-40 w-[26%] h-[50%] bg-[#646B77] bg-opacity-85 rounded-lg p-6 shadow-xl z-10">
           <div className="login-form text-white space-y-2">
             <h3 className="text-lg font-semibold">Login to your Account</h3>
             <p className="text-sm">
