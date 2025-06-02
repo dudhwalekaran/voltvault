@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { FaCheck, FaTimes, FaTrash } from "react-icons/fa"; // Import icons from react-icons
 
 export default function RequestsPage() {
   const [requests, setRequests] = useState([]);
@@ -201,21 +202,24 @@ export default function RequestsPage() {
                   <div className="flex space-x-2">
                     <button
                       onClick={() => updateRequestStatus(req._id, "approved")}
-                      className="px-3 py-1 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-600 transition"
+                      className="p-2 bg-green-500 text-white rounded-full hover:bg-green-600 transition focus:outline-none focus:ring-2 focus:ring-green-300"
+                      title="Accept"
                     >
-                      Accept
+                      <FaCheck size={16} />
                     </button>
                     <button
                       onClick={() => updateRequestStatus(req._id, "rejected")}
-                      className="px-3 py-1 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition"
+                      className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition focus:outline-none focus:ring-2 focus:ring-red-300"
+                      title="Reject"
                     >
-                      Reject
+                      <FaTimes size={16} />
                     </button>
                     <button
                       onClick={() => deleteRequest(req._id)}
-                      className="px-3 py-1 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition"
+                      className="p-2 bg-gray-600 text-white rounded-full hover:bg-gray-700 transition focus:outline-none focus:ring-2 focus:ring-gray-400"
+                      title="Delete"
                     >
-                      Delete
+                      <FaTrash size={16} />
                     </button>
                   </div>
                 ) : req.status === "pending" ? (
@@ -226,9 +230,10 @@ export default function RequestsPage() {
                   isAdmin && (
                     <button
                       onClick={() => deleteRequest(req._id)}
-                      className="px-3 py-1 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition"
+                      className="p-2 bg-gray-600 text-white rounded-full hover:bg-gray-700 transition focus:outline-none focus:ring-2 focus:ring-gray-400"
+                      title="Delete"
                     >
-                      Delete
+                      <FaTrash size={16} />
                     </button>
                   )
                 )}
