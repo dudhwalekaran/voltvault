@@ -187,7 +187,7 @@ export default function RequestsPage() {
                   {new Date(req.createdAt).toLocaleString()}
                 </p>
                 <span
-                  className={`px-3 py-1 rounded-full text-white text-sm ${
+                  className={`px-3 py-1 rounded-full text-white text-sm font-medium ${
                     req.status === "pending"
                       ? "bg-yellow-500"
                       : req.status === "approved"
@@ -198,31 +198,37 @@ export default function RequestsPage() {
                   {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
                 </span>
                 {req.status === "pending" && isAdmin ? (
-                  <>
+                  <div className="flex space-x-2">
                     <button
                       onClick={() => updateRequestStatus(req._id, "approved")}
+                      className="px-3 py-1 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-600 transition"
                     >
-                      ✅
+                      Accept
                     </button>
                     <button
                       onClick={() => updateRequestStatus(req._id, "rejected")}
+                      className="px-3 py-1 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition"
                     >
-                      ❌
+                      Reject
                     </button>
                     <button
-                      onClick={() => deleteRequest(req._id)}>
-                      🗑️
+                      onClick={() => deleteRequest(req._id)}
+                      className="px-3 py-1 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition"
+                    >
+                      Delete
                     </button>
-                  </>
+                  </div>
                 ) : req.status === "pending" ? (
-                  <span className="text-gray-500">Awaiting admin review</span>
+                  <span className="px-3 py-1 bg-gray-100 text-gray-600 text-sm font-medium rounded-lg">
+                    Awaiting admin review
+                  </span>
                 ) : (
                   isAdmin && (
                     <button
                       onClick={() => deleteRequest(req._id)}
-                      className="p-2 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+                      className="px-3 py-1 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition"
                     >
-                      🗑️
+                      Delete
                     </button>
                   )
                 )}
