@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 export async function POST(req) {
   try {
     const body = await req.json();
+    console.log('Request body:', body); // Debug
     const { name, email, password } = body;
 
     if (!name || !email || !password) {
@@ -36,21 +37,28 @@ export async function POST(req) {
     });
 
     await newUser.save();
+    console.log('User saved:', newUser); // Debug
 
     return NextResponse.json(
       { message: "User request submitted successfully!" },
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error details:", error);
+    console.error("Error details:", error.name, error.message, error.errors); // Debug
     if (error.name === "ValidationError") {
       return NextResponse.json(
         { message: "Validation failed", details: error.errors },
         { status: 400 }
       );
     }
+    if (error.code === 11000) {
+      return NextResponse.json(
+        { message: "User with this email already exists." },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
-      { message: "Server error. Please try again later." },
+      { message: "Server error. Please try again later.", error: error.message },
       { status: 500 }
     );
   }
