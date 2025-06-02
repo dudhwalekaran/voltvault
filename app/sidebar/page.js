@@ -216,7 +216,7 @@ const Sidebar = () => {
 
           {/* Profile Card Dropdown */}
           {showProfileCard && (
-            <div className="absolute bottom-full right-0 w-64 bg-white border rounded-lg shadow-lg p-4 z-50 mb-2">
+            <div className="absolute bottom-full right-0 left-10 w-64 bg-white border rounded-lg shadow-lg p-4 z-50 mb-2">
               <div className="flex items-center space-x-3 mb-4">
                 <div className="w-10 h-10 flex items-center justify-center rounded-full bg-pink-500 text-white text-xl font-bold">
                   {generateInitials(user.name)}
