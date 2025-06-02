@@ -69,7 +69,7 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="w-48 h-screen bg-gray-100 text-black flex flex-col border-r-2 border-gray-300 transition-all duration-300 shadow-[inset_0_4px_10px_rgba(0,0,0,0.3)]">
+    <div className="w-48 h-screen bg-gray-100 text-black flex flex-col border-r-2 border-gray-300 transition-all duration-300 shadow-[inset_0_4px_10px_rgba(0,0,0,0.3)] z-50">
       {/* Sidebar Content with Scroll */}
       <div className="flex-1 overflow-y-auto p-4">
         {/* Logo */}
@@ -216,7 +216,7 @@ const Sidebar = () => {
 
           {/* Profile Card Dropdown */}
           {showProfileCard && (
-            <div className="absolute bottom-full left-0 w-full bg-white border rounded-lg shadow-lg p-4 z-50 mb-2">
+            <div className="absolute bottom-full right-0 w-64 bg-white border rounded-lg shadow-lg p-4 z-50 mb-2">
               <div className="flex items-center space-x-3 mb-4">
                 <div className="w-10 h-10 flex items-center justify-center rounded-full bg-pink-500 text-white text-xl font-bold">
                   {generateInitials(user.name)}
