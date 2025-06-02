@@ -171,7 +171,7 @@ const Sidebar = () => {
               Transformers - Two Winding
             </Link>
           </div>
-          <div className="p-2 cursor-pointer hover:bg-gray-300 rounded-lg">
+          <div className "p-2 cursor-pointer hover:bg-gray-300 rounded-lg">
             <Link href="/transmission-line">Transmission Line</Link>
           </div>
           <div className="p-2 cursor-pointer hover:bg-gray-300 rounded-lg">
@@ -213,7 +213,7 @@ const Sidebar = () => {
 
           {/* Profile Card Dropdown */}
           {showProfileCard && (
-            <div className="absolute bottom-12 left-12 w-64 bg-white border rounded-lg shadow-lg p-4 z-10">
+            <div className="absolute bottom-full left-0 w-full bg-white border rounded-lg shadow-lg p-4 z-10">
               <div className="flex items-center space-x-3 mb-4">
                 <div className="w-10 h-10 flex items-center justify-center rounded-full bg-pink-500 text-white text-xl font-bold">
                   {generateInitials(user.name)}
