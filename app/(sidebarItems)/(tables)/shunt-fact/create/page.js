@@ -59,14 +59,19 @@ export default function ShuntFactCreate() {
             Shunt Fact
           </label>
           <input
-            type="text"
-            id="shunt"
-            placeholder="Shunt Fact"
-            className="p-2 border border-gray-300 font-normal text-base rounded-lg"
-            value={shunt}
-            onChange={(e) => setShunt(e.target.value)}
-            required
-          />
+  type="number"
+  id="shunt"
+  placeholder="Shunt Fact"
+  className="p-2 border border-gray-300 font-semibold text-base rounded-lg"
+  value={shunt}
+  onChange={(e) => {
+    const value = e.target.value;
+    if (/^-?\d*\.?\d*$/.test(value) || value === '') {
+      setShunt(value);
+    }
+  }}
+  required
+/>
         </div>
 
         {error && (
