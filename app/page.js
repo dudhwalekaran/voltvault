@@ -8,10 +8,12 @@ export default function Landing() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false); // New loading state
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true); // Set loading to true when login starts
 
     console.log("Attempting login with email:", email, "password:", password);
 
@@ -49,6 +51,8 @@ export default function Landing() {
       setError("An error occurred. Please try again later.");
       alert("An error occurred. Please try again later.");
       console.error("Login error:", err);
+    } finally {
+      setLoading(false); // Set loading to false when login completes
     }
   };
 
@@ -120,6 +124,7 @@ export default function Landing() {
                   placeholder="abc@xyz.com"
                   className="w-[280px] p-2 rounded-md bg-white text-black"
                   required
+                  disabled={loading} // Disable input during loading
                 />
               </div>
 
@@ -136,6 +141,7 @@ export default function Landing() {
                   placeholder="password"
                   className="w-[280px] p-2 px-2.5 rounded-md bg-white text-black"
                   required
+                  disabled={loading} // Disable input during loading
                 />
               </div>
 
@@ -146,11 +152,41 @@ export default function Landing() {
               <div className="btn-container flex gap-3 mt-4">
                 <button
                   type="submit"
-                  className="login-btn w-1/2 h-11 bg-[#2C49A4] hover:bg-blue-600 p-3 rounded-md text-white"
+                  className="login-btn w-1/2 h-11 bg-[#2C49A4] hover:bg-blue-600 p-3 rounded-md text-white flex items-center justify-center"
+                  disabled={loading} // Disable button during loading
                 >
-                  Login
+                  {loading ? (
+                    <span className="flex items-center">
+                      <svg
+                        className="animate-spin h-5 w-5 mr-2 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v8h8a8 8 0 01-8 8 8 8 0 01-8-8z"
+                        ></path>
+                      </svg>
+                      Loading...
+                    </span>
+                  ) : (
+                    "Login"
+                  )}
                 </button>
-                <button className="request w-1/2 h-11 bg-yellow-500 hover:bg-yellow-600 p-3 rounded-md text-white">
+                <button
+                  className="request w-1/2 h-11 bg-yellow-500 hover:bg-yellow-600 p-3 rounded-md text-white"
+                  disabled={loading} // Disable button during loading
+                >
                   <Link href="request-login">Request Login</Link>
                 </button>
               </div>
