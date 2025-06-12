@@ -59,19 +59,33 @@ export default function ShuntFactCreate() {
             Shunt Fact
           </label>
           <input
-  type="number"
-  id="shunt"
-  placeholder="Shunt Fact"
-  className="p-2 border border-gray-300 font-semibold text-base rounded-lg"
-  value={shunt}
-  onChange={(e) => {
-    const value = e.target.value;
-    if (/^-?\d*\.?\d*$/.test(value) || value === '') {
-      setShunt(value);
-    }
-  }}
-  required
-/>
+            type="number"
+            id="shunt"
+            placeholder="Shunt Fact"
+            className="p-2 border border-gray-300 font-semibold text-base rounded-lg"
+            value={shunt}
+            onChange={(e) => {
+              const value = e.target.value;
+              // Allow only numbers, including negative and decimals
+              if (/^-?\d*\.?\d*$/.test(value) && value !== '-') {
+                setShunt(value);
+              }
+            }}
+            onKeyDown={(e) => {
+              // Prevent non-numeric keys (except control keys like Backspace, Arrow keys)
+              if (
+                !/[0-9.-]/.test(e.key) &&
+                !['Backspace', 'ArrowLeft', 'ArrowRight', 'Delete', 'Tab'].includes(e.key)
+              ) {
+                e.preventDefault();
+              }
+            }}
+            step="any" // Allow decimals
+            min="-999999999" // Optional: Set reasonable min/max
+            max="999999999"
+            required
+            disabled={loading}
+          />
         </div>
 
         {error && (
