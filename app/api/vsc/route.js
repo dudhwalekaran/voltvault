@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
-import Vsc from "@/models/Vsc-hvdc-link";
-import PendingRequest from "@/models/PendingRequest"; // Import PendingRequest model
+import Vsc from "@/models/Vsc";
+import PendingRequest from "@/models/PendingRequest";
 import History from "@/models/History";
 import jwt from "jsonwebtoken";
 
@@ -85,7 +85,7 @@ export async function POST(req) {
         adminName: decoded.username || decoded.name || "unknown",
         details: `Created VSC: ${JSON.stringify({ vsc: vscFact })}`,
       });
-      await History.save();
+      await history.save(); // Fixed: Use instance to save
       console.log("History entry created:", history);
 
       const response = {
@@ -126,13 +126,25 @@ export async function POST(req) {
     );
   }
 }
-// GET handler (unchanged)
+
 export async function GET(req) {
   try {
     console.log("=== GET /api/vsc Started ===");
     const authHeader = req.headers.get("authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!authHeader) {
+      console.log("No authorization header provided, likely a browser visit");
+      return NextResponse.json(
+        { error: "This endpoint requires authentication. Please log in to access VSC data." },
+        { status: 401 }
+      );
+    }
+
+    if (!authHeader.startsWith("Bearer ")) {
+      console.log("Invalid authorization header format");
+      return NextResponse.json(
+        { error: "Unauthorized: Invalid token format" },
+        { status: 401 }
+      );
     }
 
     const token = authHeader.split(" ")[1];
@@ -148,6 +160,9 @@ export async function GET(req) {
     return NextResponse.json({ vscs }, { status: 200 });
   } catch (error) {
     console.error("GET Failed:", error.message);
-    return NextResponse.json({ error: "Failed to fetch VSCs", details: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch VSCs", details: error.message },
+      { status: 500 }
+    );
   }
 }
