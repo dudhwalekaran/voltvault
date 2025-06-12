@@ -70,15 +70,20 @@ export default function CreateVscPage() {
             VSC Fact
           </label>
           <input
-            type="text"
-            id="vscFact"
-            placeholder="VSC Fact"
-            className="p-2 border border-gray-300 font-normal text-base rounded-lg"
-            value={vscFact}
-            onChange={(e) => setVscFact(e.target.value)}
-            required
-            disabled={loading}
-          />
+  type="number"
+  id="vscFact"
+  placeholder="VSC Fact"
+  className="p-2 border border-gray-300 font-semibold text-base rounded-lg"
+  value={vscFact}
+  onChange={(e) => {
+    const value = e.target.value;
+    if (/^\d*$/.test(value)) {
+      setVscFact(value);
+    }
+  }}
+  required
+  disabled={loading}
+/>
         </div>
 
         {error && <p className="text-red-500">{error}</p>}
