@@ -1,153 +1,107 @@
-import { NextResponse } from "next/server";
-import connectDB from "@/lib/db";
-import Vsc from "@/models/Vsc";
-import PendingRequest from "@/models/PendingRequest";
-import History from "@/models/History";
-import jwt from "jsonwebtoken";
+"use client";
 
-export async function POST(req) {
-  try {
-    console.log("=== POST /api/vsc Started ===");
-    
-    // Check JWT_SECRET
-    if (!process.env.JWT_SECRET) {
-      console.error("JWT_SECRET is missing!");
-      return NextResponse.json(
-        { error: "Server configuration error: JWT_SECRET not set" },
-        { status: 500 }
-      );
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+export default function CreateVscPage() {
+  const [vscFact, setVscFact] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const router = useRouter();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    const vscData = { vscFact };
+    console.log("Sending data to API:", vscData);
+
+    const token = localStorage.getItem("authToken");
+    console.log("Token from localStorage:", token);
+    if (!token) {
+      setError("No token found. Please log in.");
+      setLoading(false);
+      return;
     }
 
-    // Get and validate token
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      console.log("No valid token");
-      return NextResponse.json(
-        { error: "Unauthorized: Missing or invalid token" },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.split(" ")[1];
-    let decoded;
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log("Decoded Token:", decoded);
-    } catch (error) {
-      console.error("JWT Verify Failed:", error.message);
-      return NextResponse.json(
-        { error: "Invalid token", details: error.message },
-        { status: 401 }
-      );
-    }
-
-    // Parse body
-    let vscFact;
-    try {
-      const body = await req.json();
-      vscFact = body.vscFact;
-      console.log("Request Body:", body);
-    } catch (error) {
-      console.error("Body Parse Failed:", error.message);
-      return NextResponse.json(
-        { error: "Invalid request body" },
-        { status: 400 }
-      );
-    }
-
-    if (!vscFact) {
-      console.log("Missing vscFact");
-      return NextResponse.json({ error: "Missing vscFact" }, { status: 400 });
-    }
-
-    // Connect to DB
-    await connectDB();
-    console.log("Database connected successfully");
-
-    const role = decoded.status ? decoded.status.toLowerCase() : "unknown";
-    console.log("User role:", role);
-
-    if (role === "admin") {
-      console.log("Admin role detected, creating VSC directly");
-      const newVsc = new Vsc({
-        vsc: vscFact,
-        createdBy: decoded.userId,
+      const response = await fetch("/api/vsc", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(vscData),
       });
-      const savedVsc = await newVsc.save();
-      console.log("VSC saved directly:", savedVsc);
 
-      // Log the action to History
-      const history = new History({
-        action: "create",
-        dataType: "Vsc",
-        recordId: savedVsc._id.toString(),
-        adminEmail: decoded.email || decoded.userId || "unknown",
-        adminName: decoded.username || decoded.name || "unknown",
-        details: `Created VSC: ${JSON.stringify({ vsc: vscFact })}`,
-      });
-      await history.save(); // Corrected: Instantiate and save
-      console.log("History entry created:", history);
+      // Log everything about the response
+      console.log("Response Status:", response.status);
+      console.log("Response OK:", response.ok);
+      console.log("Response Headers:", [...response.headers.entries()]);
 
-      const response = {
-        success: true,
-        message: "VSC created successfully",
-        vsc: savedVsc,
-      };
-      console.log("Sending Response:", response);
-      return NextResponse.json(response, { status: 201 });
+      const data = await response.json();
+      console.log("Parsed API Response:", data);
+
+      if (response.ok) {
+        console.log("Success path triggered!");
+        alert(data.message || "VSC Fact created successfully!");
+        setVscFact("");
+        router.push("/vsc-hvdc-link");
+      } else {
+        console.log("Error path triggered!");
+        setError(data.error || `Failed to create VSC Fact (Status: ${response.status})`);
+      }
+    } catch (error) {
+      console.error("Fetch error:", error);
+      setError("Failed to create VSC Fact due to a network error");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    console.log("Non-admin role detected, saving VSC to PendingRequest");
-    const pendingRequest = new PendingRequest({
-      dataType: "Vsc",
-      data: { vsc: vscFact },
-      submittedBy: decoded.userId || decoded.email || "unknown",
-      username: decoded.username || decoded.name || "unknown",
-      email: decoded.email || "unknown",
-      description: `Add VSC: ${vscFact}`,
-      status: "pending",
-    });
-    const savedPendingRequest = await pendingRequest.save();
-    console.log("PendingRequest saved:", savedPendingRequest);
+  return (
+    <div className="m-4 font-bold text-3xl">
+      <h1>Create VSC Fact</h1>
+      <form className="grid grid-cols-2 gap-4 mt-6" onSubmit={handleSubmit}>
+        <div className="flex flex-col">
+          <label htmlFor="vscFact" className="text-base font-normal mb-2">
+            VSC Fact
+          </label>
+          <input
+            type="text"
+            id="vscFact"
+            placeholder="VSC Fact"
+            className="p-2 border border-gray-300 font-normal text-base rounded-lg"
+            value={vscFact}
+            onChange={(e) => setVscFact(e.target.value)}
+            required
+            disabled={loading}
+          />
+        </div>
 
-    const response = {
-      success: true,
-      message: "VSC request submitted for approval",
-      pendingRequest: savedPendingRequest,
-    };
-    console.log("Sending Response:", response);
-    return NextResponse.json(response, { status: 201 });
+        {error && <p className="text-red-500">{error}</p>}
 
-  } catch (error) {
-    console.error("=== POST /api/vsc Failed ===", error.message, error.stack);
-    return NextResponse.json(
-      { error: "Submission failed", details: error.message },
-      { status: 500 }
-    );
-  }
-}
-
-export async function GET(req) {
-  try {
-    console.log("=== GET /api/vsc Started ===");
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("Decoded Token:", decoded);
-
-    await connectDB();
-    const vscs = decoded.status === "admin"
-      ? await Vsc.find()
-      : await Vsc.find({ $or: [{ createdBy: decoded.userId }, { status: "approved" }] });
-
-    console.log("Fetched VSCs:", vscs.length);
-    return NextResponse.json({ vscs }, { status: 200 });
-  } catch (error) {
-    console.error("GET Failed:", error.message);
-    return NextResponse.json({ error: "Failed to fetch VSCs", details: error.message }, { status: 500 });
-  }
+        <div className="flex space-x-4 mt-5">
+          <button
+            type="submit"
+            className="bg-[#1E40AF] text-white w-56 font-medium text-base py-2 px-6 rounded-lg hover:bg-blue-600"
+            disabled={loading}
+          >
+            {loading ? "Submitting..." : "Submit"}
+          </button>
+          <Link href="/vsc-hvdc-link">
+            <button
+              type="button"
+              className="bg-[#EF4444] text-white w-56 font-medium text-base py-2 px-6 rounded-lg hover:bg-gray-600"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+          </Link>
+        </div>
+      </form>
+    </div>
+  );
 }
